@@ -10,7 +10,7 @@ import type { MemoryOverview } from './useMemoryStats'
 
 /** Ambient simulation energy — high enough that the orbit drift is always
  * visible, low enough that clusters stay coherent. */
-export const AMBIENT_ALPHA = 0.045
+export const AMBIENT_ALPHA = 0.1
 
 export interface GraphNode extends SimulationNodeDatum {
   id: string
@@ -104,8 +104,8 @@ export function buildForceGraph(overview: MemoryOverview, w: number, h: number):
         {
           baseX: w / 2 + Math.cos(angle) * dist * w * 0.8,
           baseY: h / 2 + Math.sin(angle) * dist * h * 0.76,
-          radius: 22 + (seed % 23),
-          speed: 0.10 + ((seed >> 4) % 10) / 55, // rad/s → one lap in ~35–65s
+          radius: 42 + (seed % 48), // wide wandering: 42–90px orbits
+          speed: 0.24 + ((seed >> 4) % 10) / 26, // rad/s → one lap in ~10–26s
           phase: (seed % 628) / 100,
         },
       ]
@@ -119,7 +119,8 @@ export function buildForceGraph(overview: MemoryOverview, w: number, h: number):
       if (!o || node.fx != null) continue
       const tx = o.baseX + Math.cos(t * o.speed + o.phase) * o.radius
       const ty = o.baseY + Math.sin(t * o.speed * 0.8 + o.phase) * o.radius * 0.8
-      const k = node.hub ? 0.09 : 0.014
+      // hubs track the faster anchors tightly; satellites lag and whip behind
+      const k = node.hub ? 0.13 : 0.02
       node.vx = (node.vx ?? 0) + (tx - node.x!) * k * alpha
       node.vy = (node.vy ?? 0) + (ty - node.y!) * k * alpha
     }
