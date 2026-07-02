@@ -1,6 +1,19 @@
 # HALO — State
 
-Updated: 2026-07-02
+Updated: 2026-07-02 (evening)
+
+## Latest
+
+- **Slice 8 (Chase AI video-inspired)** — Actions command center: one-click
+  buttons dispatch headless executor runs, optional cron routines, run logs in
+  vault `OS/Runs/` with past-run injection (self-improving loops). Default
+  actions: skill-audit, vault-index, morning-brief. Memory constellation
+  canvas graphic. skill-audit live-verified: mined claude-mem, wrote 12
+  proposals to `OS/Reports/skill-audit-2026-07-02.md`.
+- **In-process TTS** — Kokoro ONNX worker (spawn on demand, unload after 10min
+  idle, `say` fallback). voicemode kokoro service no longer needed by HALO.
+- gemma3:4b now free-tier default (12b evicted voice services); cancelled
+  streams meter estimated tokens.
 
 ## Done
 

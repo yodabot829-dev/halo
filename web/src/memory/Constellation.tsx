@@ -1,73 +1,10 @@
 import { useEffect, useRef } from 'react'
+import { buildForceGraph, type GraphNode } from './useForceGraph'
 import type { MemoryOverview } from './useMemoryStats'
 
-interface Dot {
-  x: number
-  y: number
-  r: number
-  phase: number
-  speed: number
-}
-
-interface Cluster {
-  project: string
-  color: string
-  cx: number
-  cy: number
-  radius: number
-  count: number
-  dots: Dot[]
-}
-
-/** Deterministic PRNG so the constellation is stable across renders. */
-function mulberry32(seed: number) {
-  let a = seed
-  return () => {
-    a |= 0
-    a = (a + 0x6d2b79f5) | 0
-    let t = Math.imul(a ^ (a >>> 15), 1 | a)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-
-const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)
-
-function buildClusters(overview: MemoryOverview, w: number, h: number): Cluster[] {
-  const projects = overview.projects.slice(0, 10)
-  const maxTotal = Math.max(...projects.map((p) => p.total), 1)
-  // Golden-angle spiral keeps clusters spread without overlap for ~10 items.
-  return projects.map((p, i) => {
-    const angle = i * 2.39996
-    const dist = 0.16 + 0.34 * Math.sqrt((i + 0.6) / projects.length)
-    const cx = w / 2 + Math.cos(angle) * dist * w * 0.82
-    const cy = h / 2 + Math.sin(angle) * dist * h * 0.78
-    const radius = 22 + 52 * Math.sqrt(p.total / maxTotal)
-    const rand = mulberry32(hash(p.project))
-    const count = Math.max(10, Math.min(110, Math.round(p.total / 24)))
-    const dots: Dot[] = Array.from({ length: count }, () => {
-      const a = rand() * Math.PI * 2
-      const d = radius * Math.sqrt(rand())
-      return {
-        x: Math.cos(a) * d,
-        y: Math.sin(a) * d * 0.72,
-        r: 0.8 + rand() * 1.6,
-        phase: rand() * Math.PI * 2,
-        speed: 0.2 + rand() * 0.5,
-      }
-    })
-    return {
-      project: p.project,
-      color: overview.colorFor.get(p.project) ?? 'var(--sother)',
-      cx,
-      cy,
-      radius,
-      count: p.total,
-      dots,
-    }
-  })
-}
-
+/** Live force-directed memory graph — hubs and note-nodes on springs,
+ * continuously breathing. Hover a cluster to light it up; drag anything;
+ * click a hub to drill into the project. */
 export function Constellation({
   overview,
   onOpenProject,
@@ -76,7 +13,6 @@ export function Constellation({
   onOpenProject?: (name: string) => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const hoverRef = useRef<string | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -90,68 +26,122 @@ export function Constellation({
     if (!ctx) return
     ctx.scale(dpr, dpr)
 
-    const clusters = buildClusters(overview, w, h)
+    const { nodes, links, simulation } = buildForceGraph(overview, w, h)
     const styles = getComputedStyle(canvas)
-    const colorOf = (c: Cluster) =>
-      c.color.startsWith('var(')
-        ? styles.getPropertyValue(c.color.slice(4, -1)).trim() || '#888'
-        : c.color
-    const muted = styles.getPropertyValue('--muted').trim()
+    const resolve = (c: string) =>
+      c.startsWith('var(') ? styles.getPropertyValue(c.slice(4, -1)).trim() || '#888' : c
+    const colors = new Map(nodes.map((n) => [n.project, resolve(n.color)]))
+    const lineColor = styles.getPropertyValue('--line').trim()
+    const mutedColor = styles.getPropertyValue('--muted').trim()
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduceMotion) {
+      simulation.alphaTarget(0).stop()
+      simulation.tick(220) // settle instantly, draw static
+    }
 
-    let raf = 0
-    const draw = (t: number) => {
+    let hoverProject: string | null = null
+    let dragNode: GraphNode | null = null
+
+    const draw = () => {
       ctx.clearRect(0, 0, w, h)
-      for (const cluster of clusters) {
-        const color = colorOf(cluster)
-        const hovered = hoverRef.current === cluster.project
-        ctx.globalAlpha = hovered ? 1 : 0.75
-        for (const dot of cluster.dots) {
-          const wobble = reduceMotion ? 0 : Math.sin(t / 1600 * dot.speed + dot.phase) * 2.2
-          ctx.beginPath()
-          ctx.arc(cluster.cx + dot.x + wobble, cluster.cy + dot.y + wobble * 0.6, dot.r, 0, 7)
-          ctx.fillStyle = color
-          ctx.fill()
-        }
-        ctx.globalAlpha = hovered ? 1 : 0.85
-        ctx.fillStyle = hovered ? color : muted
+      // links first
+      for (const link of links) {
+        const s = link.source as GraphNode
+        const t = link.target as GraphNode
+        if (typeof s === 'string' || typeof t === 'string') continue
+        const active = hoverProject !== null && !link.hubLink && s.project === hoverProject
+        ctx.globalAlpha = link.hubLink ? 0.07 : active ? 0.5 : hoverProject ? 0.05 : 0.16
+        ctx.strokeStyle = active ? (colors.get(s.project) ?? lineColor) : lineColor
+        ctx.lineWidth = active ? 1 : 0.7
+        ctx.beginPath()
+        ctx.moveTo(s.x!, s.y!)
+        ctx.lineTo(t.x!, t.y!)
+        ctx.stroke()
+      }
+      // nodes
+      for (const node of nodes) {
+        const dimmed = hoverProject !== null && node.project !== hoverProject
+        ctx.globalAlpha = dimmed ? 0.16 : node.hub ? 1 : 0.85
+        ctx.beginPath()
+        ctx.arc(node.x!, node.y!, node.r, 0, 7)
+        ctx.fillStyle = colors.get(node.project) ?? '#888'
+        ctx.fill()
+      }
+      // labels on hubs
+      ctx.globalAlpha = 1
+      ctx.textAlign = 'center'
+      for (const node of nodes) {
+        if (!node.hub) continue
+        const hovered = node.project === hoverProject
+        if (hoverProject && !hovered) continue
+        ctx.fillStyle = hovered ? (colors.get(node.project) ?? mutedColor) : mutedColor
         ctx.font = `${hovered ? 600 : 400} 11px "Helvetica Neue", Helvetica, sans-serif`
-        ctx.textAlign = 'center'
         ctx.fillText(
-          `${cluster.project}${hovered ? ` · ${cluster.count.toLocaleString()}` : ''}`,
-          cluster.cx,
-          cluster.cy + cluster.radius * 0.75 + 16,
+          hovered ? `${node.project} · ${node.count?.toLocaleString()}` : node.project,
+          node.x!,
+          node.y! + node.r + 14,
         )
       }
-      ctx.globalAlpha = 1
-      if (!reduceMotion) raf = requestAnimationFrame(draw)
     }
-    raf = requestAnimationFrame(draw)
 
-    const clusterAt = (e: MouseEvent): Cluster | null => {
+    simulation.on('tick', draw)
+    if (reduceMotion) draw()
+
+    const nodeAt = (e: MouseEvent): GraphNode | null => {
       const rect = canvas.getBoundingClientRect()
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top
-      return (
-        clusters.find((c) => Math.hypot(x - c.cx, (y - c.cy) / 0.75) < c.radius + 14) ?? null
-      )
+      let best: GraphNode | null = null
+      let bestDist = 22
+      for (const node of nodes) {
+        const d = Math.hypot(x - node.x!, y - node.y!) - node.r
+        if (d < bestDist) {
+          bestDist = d
+          best = node
+        }
+      }
+      return best
     }
+
     const onMove = (e: MouseEvent) => {
-      const cluster = clusterAt(e)
-      hoverRef.current = cluster?.project ?? null
-      canvas.style.cursor = cluster ? 'pointer' : 'default'
-      if (reduceMotion) draw(0)
+      if (dragNode) {
+        const rect = canvas.getBoundingClientRect()
+        dragNode.fx = e.clientX - rect.left
+        dragNode.fy = e.clientY - rect.top
+        simulation.alphaTarget(0.3).restart()
+        return
+      }
+      const node = nodeAt(e)
+      hoverProject = node?.project ?? null
+      canvas.style.cursor = node ? (node.hub ? 'pointer' : 'grab') : 'default'
+      if (reduceMotion) draw()
     }
-    const onClick = (e: MouseEvent) => {
-      const cluster = clusterAt(e)
-      if (cluster) onOpenProject?.(cluster.project)
+    const onDown = (e: MouseEvent) => {
+      dragNode = nodeAt(e)
+      if (dragNode) canvas.style.cursor = 'grabbing'
     }
+    const onUp = (e: MouseEvent) => {
+      if (dragNode) {
+        const moved = Math.hypot((dragNode.fx ?? 0) - (dragNode.x ?? 0), 0) > 2
+        if (dragNode.hub && !moved) onOpenProject?.(dragNode.project)
+        dragNode.fx = null
+        dragNode.fy = null
+        dragNode = null
+        simulation.alphaTarget(reduceMotion ? 0 : 0.012)
+      } else {
+        const node = nodeAt(e)
+        if (node?.hub) onOpenProject?.(node.project)
+      }
+    }
+
     canvas.addEventListener('mousemove', onMove)
-    canvas.addEventListener('click', onClick)
+    canvas.addEventListener('mousedown', onDown)
+    window.addEventListener('mouseup', onUp)
     return () => {
-      cancelAnimationFrame(raf)
+      simulation.stop()
       canvas.removeEventListener('mousemove', onMove)
-      canvas.removeEventListener('click', onClick)
+      canvas.removeEventListener('mousedown', onDown)
+      window.removeEventListener('mouseup', onUp)
     }
   }, [overview, onOpenProject])
 
