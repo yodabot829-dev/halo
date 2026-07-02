@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { buildForceGraph, type GraphNode } from './useForceGraph'
+import { AMBIENT_ALPHA, buildForceGraph, type GraphNode } from './useForceGraph'
 import type { MemoryOverview } from './useMemoryStats'
 
 /** Live force-directed memory graph — hubs and note-nodes on springs,
@@ -127,7 +127,7 @@ export function Constellation({
         dragNode.fx = null
         dragNode.fy = null
         dragNode = null
-        simulation.alphaTarget(reduceMotion ? 0 : 0.012)
+        simulation.alphaTarget(reduceMotion ? 0 : AMBIENT_ALPHA)
       } else {
         const node = nodeAt(e)
         if (node?.hub) onOpenProject?.(node.project)

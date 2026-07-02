@@ -3,12 +3,14 @@ import {
   forceLink,
   forceManyBody,
   forceSimulation,
-  forceX,
-  forceY,
   type Simulation,
   type SimulationNodeDatum,
 } from 'd3-force'
 import type { MemoryOverview } from './useMemoryStats'
+
+/** Ambient simulation energy — high enough that the orbit drift is always
+ * visible, low enough that clusters stay coherent. */
+export const AMBIENT_ALPHA = 0.045
 
 export interface GraphNode extends SimulationNodeDatum {
   id: string
@@ -90,19 +92,38 @@ export function buildForceGraph(overview: MemoryOverview, w: number, h: number):
     }
   })
 
-  const anchors = new Map(
+  // Each cluster's anchor orbits its home position — the source of the
+  // graph's autonomous gliding motion. Speeds/phases differ per cluster.
+  const orbits = new Map(
     projects.map((p, i) => {
       const angle = i * 2.39996
       const dist = 0.18 + 0.3 * Math.sqrt((i + 0.6) / projects.length)
+      const seed = hash(p.project)
       return [
         p.project,
         {
-          x: w / 2 + Math.cos(angle) * dist * w * 0.8,
-          y: h / 2 + Math.sin(angle) * dist * h * 0.76,
+          baseX: w / 2 + Math.cos(angle) * dist * w * 0.8,
+          baseY: h / 2 + Math.sin(angle) * dist * h * 0.76,
+          radius: 22 + (seed % 23),
+          speed: 0.10 + ((seed >> 4) % 10) / 55, // rad/s → one lap in ~35–65s
+          phase: (seed % 628) / 100,
         },
       ]
     }),
   )
+
+  const orbitForce = (alpha: number) => {
+    const t = performance.now() / 1000
+    for (const node of nodes) {
+      const o = orbits.get(node.project)
+      if (!o || node.fx != null) continue
+      const tx = o.baseX + Math.cos(t * o.speed + o.phase) * o.radius
+      const ty = o.baseY + Math.sin(t * o.speed * 0.8 + o.phase) * o.radius * 0.8
+      const k = node.hub ? 0.09 : 0.014
+      node.vx = (node.vx ?? 0) + (tx - node.x!) * k * alpha
+      node.vy = (node.vy ?? 0) + (ty - node.y!) * k * alpha
+    }
+  }
 
   const simulation = forceSimulation<GraphNode>(nodes)
     .force(
@@ -114,12 +135,15 @@ export function buildForceGraph(overview: MemoryOverview, w: number, h: number):
     )
     .force('charge', forceManyBody<GraphNode>().strength((n) => (n.hub ? -90 : -7)))
     .force('collide', forceCollide<GraphNode>((n) => n.r + 1.6).strength(0.6))
-    .force('x', forceX<GraphNode>((n) => anchors.get(n.project)?.x ?? w / 2).strength((n) => (n.hub ? 0.08 : 0.012)))
-    .force('y', forceY<GraphNode>((n) => anchors.get(n.project)?.y ?? h / 2).strength((n) => (n.hub ? 0.08 : 0.012)))
+    .force('orbit', orbitForce)
     .alpha(1)
     .alphaDecay(0.015)
-    // never fully sleeps — the graph keeps breathing like Obsidian's
-    .alphaTarget(0.012)
+    // never sleeps — anchors orbit, clusters glide, the graph lives
+    .alphaTarget(AMBIENT_ALPHA)
 
   return { nodes, links, simulation }
+}
+
+function hash(s: string): number {
+  return Math.abs([...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7))
 }
