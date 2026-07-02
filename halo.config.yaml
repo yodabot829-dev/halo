@@ -94,7 +94,11 @@ projects:
   vault: ~/Documents/Openclaw yodabot # the Obsidian second brain itself
 
 executors:
-  default: claude-code # swap to codex to change the primary worker
+  # Swap default to `codex` when Claude Max hits its 5h session limit —
+  # NOTE 2026-07-02: codex CLI rejects all models on the current ChatGPT
+  # plan ("not supported with a ChatGPT account"); re-run `codex login`
+  # or upgrade the plan before relying on it as the fallback executor.
+  default: claude-code
 
 goals:
   dir: OS/Goals

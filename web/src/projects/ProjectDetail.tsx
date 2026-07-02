@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { apiFetch } from '../api'
 import type { GoalSummary } from '../goals/useGoals'
 import { useMemoryStats } from '../memory/useMemoryStats'
+import { ProjectAsk } from './ProjectAsk'
 import { Spark } from './Spark'
 
 interface ProjectInfo {
@@ -10,6 +11,7 @@ interface ProjectInfo {
   lastCommitMessage: string | null
   weeklyCommits: number[]
   next: string | null
+  graphed: boolean
 }
 
 interface NoteRow {
@@ -58,6 +60,8 @@ export function ProjectDetail({ name, onBack }: { name: string; onBack: () => vo
           </span>
         )}
       </div>
+
+      <ProjectAsk name={name} graphed={info?.graphed ?? false} />
 
       <div className="detail-grid">
         {info && (

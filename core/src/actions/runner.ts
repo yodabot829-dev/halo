@@ -89,6 +89,22 @@ export class ActionRunner {
     })
   }
 
+  /** Dispatch a one-off run that is not declared in config (e.g. per-project
+   * graphify/ask). Same logging, confinement, and board visibility. */
+  async runAdhoc(name: string, project: string, prompt: string): Promise<RunRecord> {
+    if (!/^[a-z0-9-]+$/.test(name)) throw new Error(`Invalid adhoc action name "${name}"`)
+    const action: ActionConfig = {
+      name,
+      prompt,
+      project,
+      loop: false,
+      historyRuns: 0,
+      approval: false,
+      applyPrompt: '',
+    }
+    return this.dispatch(action, `${prompt}\n\nEnd your reply with a concise summary.`, {})
+  }
+
   /** Approve a draft: mark it approved and dispatch the apply phase with the
    * approved draft injected verbatim. */
   async approve(name: string, runId: string): Promise<RunRecord> {

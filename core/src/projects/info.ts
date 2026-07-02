@@ -15,6 +15,8 @@ export interface ProjectInfo {
   weeklyCommits: number[]
   /** First "Next" item from STATE.md, if present. */
   next: string | null
+  /** graphify-out/ knowledge graph present. */
+  graphed: boolean
 }
 
 export const WEEKS = 12
@@ -53,6 +55,7 @@ export async function gatherProjectInfo(
     lastCommitMessage: null,
     weeklyCommits: new Array<number>(WEEKS).fill(0),
     next: null,
+    graphed: existsSync(join(path, 'graphify-out')),
   }
   if (!base.exists) return base
 

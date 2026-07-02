@@ -899,6 +899,43 @@ button.ghost {
   animation: pulse 1.4s ease-in-out infinite;
 }
 
+.ask-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ask-free input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  outline: none;
+}
+
+.ask-free input:focus {
+  border-color: var(--accent);
+}
+
+.ask-answer {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ask-answer-text {
+  font-size: 13px;
+  white-space: pre-wrap;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
 .status-done { background: #2e9e5b; }
 .status-running { background: var(--accent); }
 .status-pending, .status-stopped { background: var(--muted); }

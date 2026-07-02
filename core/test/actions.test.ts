@@ -87,6 +87,18 @@ describe('ActionRunner', () => {
     expect(runLog.recent('brief', 1)[0]?.status).toBe('failed')
   })
 
+  it('runAdhoc dispatches unconfigured runs with logging and confinement', async () => {
+    const prompts: string[] = []
+    const runner = makeRunner(fakeExecutor({ ok: true, output: 'answered', exitCode: 0 }, prompts))
+    const run = await runner.runAdhoc('ask-demo', 'demo', 'What does this repo do?')
+    expect(run.status).toBe('done')
+    expect(run.action).toBe('ask-demo')
+    expect(prompts[0]).toContain('What does this repo do?')
+    expect(runLog.recent('ask-demo', 1)).toHaveLength(1)
+    await expect(runner.runAdhoc('ask-demo', 'nope', 'x')).rejects.toThrow(/not registered/)
+    await expect(runner.runAdhoc('Bad Name!', 'demo', 'x')).rejects.toThrow(/Invalid adhoc/)
+  })
+
   it('rejects unknown actions and concurrent runs', async () => {
     const slow: Executor = {
       name: 'fake',
