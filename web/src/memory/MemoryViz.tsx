@@ -1,3 +1,4 @@
+import { Constellation } from './Constellation'
 import { StackedArea } from './StackedArea'
 import { useMemoryStats } from './useMemoryStats'
 
@@ -13,6 +14,7 @@ export function MemoryViz({ onOpenProject }: { onOpenProject?: (name: string) =>
 
   return (
     <div className="memviz">
+      <Constellation overview={overview} onOpenProject={onOpenProject} />
       <StackedArea months={months} series={series} />
       <div className="legend">
         {series.map((s) => (

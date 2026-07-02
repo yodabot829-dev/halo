@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Actions } from './actions/Actions'
 import { Chat } from './chat/Chat'
 import { Goals } from './goals/Goals'
 import { Memory } from './memory/Memory'
@@ -6,7 +7,7 @@ import { Ops } from './ops/Ops'
 import { ProjectDetail } from './projects/ProjectDetail'
 import { Projects } from './projects/Projects'
 
-const VIEWS = ['Chat', 'Projects', 'Goals', 'Memory', 'Ops'] as const
+const VIEWS = ['Chat', 'Actions', 'Projects', 'Goals', 'Memory', 'Ops'] as const
 type View = (typeof VIEWS)[number]
 
 export function App() {
@@ -39,6 +40,8 @@ export function App() {
         <ProjectDetail name={project} onBack={() => setProject(null)} />
       ) : view === 'Chat' ? (
         <Chat />
+      ) : view === 'Actions' ? (
+        <Actions />
       ) : view === 'Projects' ? (
         <Projects onOpen={setProject} />
       ) : view === 'Goals' ? (

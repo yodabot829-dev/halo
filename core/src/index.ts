@@ -1,6 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { RunLog } from './actions/run-log.js'
+import { ActionRunner } from './actions/runner.js'
+import { ActionScheduler } from './actions/scheduler.js'
 import { expandHome, loadConfig } from './config/load.js'
 import { ClaudeCodeExecutor } from './executor/claude-code.js'
 import { CodexExecutor } from './executor/codex.js'
@@ -51,6 +54,17 @@ const goalEngine = new GoalEngine({
   stepTimeoutMs: config.goals.stepTimeoutMinutes * 60_000,
 })
 
+const runLog = new RunLog(resolve(config.vault.path, config.runsDir))
+const actionRunner = new ActionRunner({
+  actions: config.actions,
+  executors,
+  defaultExecutor: config.executors.default,
+  projects: config.projects,
+  runLog,
+  stepTimeoutMs: config.goals.stepTimeoutMinutes * 60_000,
+  log: (msg) => console.info(msg),
+})
+
 const app = await buildApp({
   config,
   registry,
@@ -59,6 +73,7 @@ const app = await buildApp({
   memoryStats: () => memoryStore.count(),
   persona,
   goals: { store: goalStore, engine: goalEngine },
+  actions: { runner: actionRunner, runLog },
   authToken: process.env['HALO_TOKEN'],
   webDist: resolve(here, '../../web/dist'),
 })
@@ -72,6 +87,13 @@ void memory.embedMissing().then((n) => {
   if (n > 0) app.log.info({ embedded: n }, 'memory embeddings updated')
 })
 memory.startWatching()
+
+const scheduler = new ActionScheduler(actionRunner, (msg) => app.log.warn(msg))
+const cronResult = scheduler.start(
+  config.actions.flatMap((a) => (a.schedule ? [{ name: a.name, schedule: a.schedule }] : [])),
+)
+if (cronResult.scheduled.length > 0) app.log.info({ routines: cronResult.scheduled }, 'routines scheduled')
+for (const bad of cronResult.invalid) app.log.warn(`routine skipped: ${bad}`)
 
 const available = registry.list().filter((m) => m.available)
 app.log.info(

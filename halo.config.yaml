@@ -91,6 +91,7 @@ projects:
   salesforce-accelerators: ~/.openclaw/workspace/yodaclaude/salesforce-accelerators
   gemmawatch: ~/.openclaw/workspace/yodaclaude/gemmawatch
   etsy-store: ~/.openclaw/workspace/yodaclaude/journeyforce # JFStudioTemplates Etsy pipeline
+  vault: ~/Documents/Openclaw yodabot # the Obsidian second brain itself
 
 executors:
   default: claude-code # swap to codex to change the primary worker
@@ -99,6 +100,48 @@ goals:
   dir: OS/Goals
   maxIterations: 3
   stepTimeoutMinutes: 30
+
+# One-click actions — buttons in the Actions tab; add `schedule:` (cron) to
+# make one a routine. loop: true injects past run logs so runs self-improve.
+actions:
+  - name: skill-audit
+    label: Audit sessions → propose skills
+    project: halo
+    loop: true
+    prompt: >
+      Open the claude-mem database at ~/.claude-mem/claude-mem.db READ-ONLY
+      (sqlite3). Analyse the most recent 150 rows of session_summaries
+      (request, completed, next_steps) for recurring manual tasks that are NOT
+      yet skills or automations. Produce a markdown report: a table of
+      task | frequency | proposed skill name | what it would do, ranked by
+      frequency. Write it to "~/Documents/Openclaw yodabot/OS/Reports/" as
+      skill-audit-<today>.md (create the folder if needed) and summarise the
+      top 5 proposals in your reply.
+  - name: vault-index
+    label: Rebuild vault index maps
+    project: vault
+    loop: false
+    prompt: >
+      You are in the Obsidian vault. Maintain navigation maps for the OS/
+      folder tree only (do NOT touch other folders): for OS/ and each of its
+      direct subfolders (Memory, Goals, Runs, Reports), write or update an
+      INDEX.md that briefly describes what lives there, lists key subfolders
+      with one-line descriptions, and links notable recent files. Keep each
+      INDEX.md under 60 lines. Report what changed.
+  - name: morning-brief
+    label: Morning brief
+    project: halo
+    loop: true
+    # schedule: "0 8 * * *"   # uncomment to run every morning at 08:00
+    prompt: >
+      Prepare a concise morning brief for Shumon. Read
+      "~/Documents/Openclaw yodabot/OS/Runs/" recent run logs and the STATE.md
+      of ~/.openclaw/workspace/yodaclaude/halo plus
+      ~/.openclaw/workspace/yodaclaude/AIProjects and
+      ~/.openclaw/workspace/yodaclaude/trading-bot. Summarise: what changed
+      recently, what is pending, and the top 3 suggested focus items for
+      today. Write it to "~/Documents/Openclaw yodabot/OS/Reports/" as
+      morning-brief-<today>.md and give the brief in your reply.
 
 voice:
   engine: local # Kokoro ONNX in a HALO-managed worker; unloads after idle

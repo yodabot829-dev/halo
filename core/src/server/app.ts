@@ -3,6 +3,8 @@ import rateLimit from '@fastify/rate-limit'
 import fastifyStatic from '@fastify/static'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { existsSync } from 'node:fs'
+import type { ActionRunner } from '../actions/runner.js'
+import type { RunLog } from '../actions/run-log.js'
 import type { HaloConfig } from '../config/schema.js'
 import type { GoalEngine } from '../goals/engine.js'
 import type { GoalStore } from '../goals/goal-file.js'
@@ -10,6 +12,7 @@ import type { MemoryService } from '../memory/service.js'
 import type { Meter } from '../meter/meter.js'
 import type { ModelSource } from '../providers/registry.js'
 import { isLoopback, tokenMatches } from './auth.js'
+import { registerActionRoutes } from './routes/actions.js'
 import { registerChatRoute } from './routes/chat.js'
 import { registerGoalRoutes } from './routes/goals.js'
 import { registerMemoryRoutes } from './routes/memory.js'
@@ -34,6 +37,8 @@ export interface AppContext {
   persona?: string | null
   /** Goal engine; absent = goal routes disabled. */
   goals?: { store: GoalStore; engine: GoalEngine }
+  /** One-click actions; absent = action routes disabled. */
+  actions?: { runner: ActionRunner; runLog: RunLog }
 }
 
 export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
@@ -75,6 +80,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   registerGoalRoutes(app, ctx)
   registerVoiceRoutes(app, ctx)
   registerProjectRoutes(app, ctx)
+  registerActionRoutes(app, ctx)
 
   if (ctx.webDist && existsSync(ctx.webDist)) {
     await app.register(fastifyStatic, { root: ctx.webDist })

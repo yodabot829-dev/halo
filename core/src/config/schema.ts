@@ -97,6 +97,24 @@ export const configSchema = z.object({
       stepTimeoutMinutes: z.number().int().min(1).max(240).default(30),
     })
     .prefault({}),
+  // One-click actions (video-style command center): each is a named prompt
+  // dispatched to an executor in a registered project. Optional cron makes
+  // it an automation; loop=true injects past run logs (self-improvement).
+  actions: z
+    .array(
+      z.object({
+        name: z.string().regex(/^[a-z0-9-]+$/, 'kebab-case name'),
+        label: z.string().optional(),
+        prompt: z.string().min(1).max(8000),
+        project: z.string().min(1),
+        executor: z.string().optional(),
+        schedule: z.string().optional(), // cron expression
+        loop: z.boolean().default(true),
+        historyRuns: z.number().int().min(0).max(10).default(3),
+      }),
+    )
+    .default([]),
+  runsDir: z.string().default('OS/Runs'),
   // Fully local voice stack — £0. STT: whisper.cpp server. TTS: 'local'
   // runs Kokoro ONNX in a HALO-managed worker (spawned on demand, killed
   // after idle so the memory returns); 'http' uses an external Kokoro server.
