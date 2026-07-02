@@ -2,6 +2,12 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expandHome, loadConfig } from './config/load.js'
+import { ClaudeCodeExecutor } from './executor/claude-code.js'
+import { CodexExecutor } from './executor/codex.js'
+import type { Executor } from './executor/types.js'
+import { GoalEngine } from './goals/engine.js'
+import { GoalStore } from './goals/goal-file.js'
+import { makeLlmJudge } from './goals/judge.js'
 import { makeOllamaEmbedder } from './memory/embed.js'
 import { MemoryService } from './memory/service.js'
 import { MemoryStore } from './memory/store.js'
@@ -31,6 +37,20 @@ const personaPath = config.memory.personaPath ? expandHome(config.memory.persona
 const persona =
   personaPath && existsSync(personaPath) ? readFileSync(personaPath, 'utf8') : null
 
+const executors = new Map<string, Executor>([
+  ['claude-code', new ClaudeCodeExecutor(config.executors.claudeCode.command, config.executors.claudeCode.args)],
+  ['codex', new CodexExecutor(config.executors.codex.command, config.executors.codex.args)],
+])
+const goalStore = new GoalStore(resolve(config.vault.path, config.goals.dir))
+const goalEngine = new GoalEngine({
+  store: goalStore,
+  executors,
+  projects: config.projects,
+  judge: makeLlmJudge(registry, config, meter),
+  maxIterations: config.goals.maxIterations,
+  stepTimeoutMs: config.goals.stepTimeoutMinutes * 60_000,
+})
+
 const app = await buildApp({
   config,
   registry,
@@ -38,6 +58,7 @@ const app = await buildApp({
   memory,
   memoryStats: () => memoryStore.count(),
   persona,
+  goals: { store: goalStore, engine: goalEngine },
   authToken: process.env['HALO_TOKEN'],
   webDist: resolve(here, '../../web/dist'),
 })

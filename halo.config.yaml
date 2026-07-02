@@ -71,6 +71,27 @@ models:
     classes: [chat, summarise]
     tier: free
 
+# Registered projects — goal executors are confined to these directories.
+projects:
+  halo: ~/.openclaw/workspace/yodaclaude/halo
+  propertyinvestiq: ~/.openclaw/workspace/yodaclaude/AIProjects
+  trading-bot: ~/.openclaw/workspace/yodaclaude/trading-bot
+  cortana: ~/.openclaw/workspace/yodaclaude/cortana
+  journeyforce-website: ~/.openclaw/workspace/yodaclaude/journeyforce-website
+  journeyforce-dashboard: ~/.openclaw/workspace/yodaclaude/journeyforce-dashboard
+  leadgen-agent: ~/.openclaw/workspace/yodaclaude/leadgen-agent
+  faceless-youtube: ~/.openclaw/workspace/yodaclaude/faceless-youtube
+  salesforce-accelerators: ~/.openclaw/workspace/yodaclaude/salesforce-accelerators
+  gemmawatch: ~/.openclaw/workspace/yodaclaude/gemmawatch
+
+executors:
+  default: claude-code # swap to codex to change the primary worker
+
+goals:
+  dir: OS/Goals
+  maxIterations: 3
+  stepTimeoutMinutes: 30
+
 # Monthly token allowances. Absent = unmetered (flat subscription / local).
 # Auto-routing skips exhausted providers; explicit override still works.
 budgets:

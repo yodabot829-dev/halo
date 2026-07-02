@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Chat } from './chat/Chat'
+import { Goals } from './goals/Goals'
 import { Ops } from './ops/Ops'
 
-const VIEWS = ['Chat', 'Ops'] as const
+const VIEWS = ['Chat', 'Goals', 'Ops'] as const
 type View = (typeof VIEWS)[number]
 
 export function App() {
@@ -25,7 +26,7 @@ export function App() {
         </nav>
         <span className="sub">Cortana · multi-model</span>
       </header>
-      {view === 'Chat' ? <Chat /> : <Ops />}
+      {view === 'Chat' ? <Chat /> : view === 'Goals' ? <Goals /> : <Ops />}
     </div>
   )
 }

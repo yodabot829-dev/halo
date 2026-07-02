@@ -1,5 +1,13 @@
-import { watch, type FSWatcher } from 'chokidar'
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  watch,
+  writeFileSync,
+  mkdirSync,
+  type FSWatcher,
+} from 'node:fs'
 import { join, relative } from 'node:path'
 import { cosine, type EmbedFn } from './embed.js'
 import { parseNote, serializeNote, slugify, type MemoryNote } from './note.js'
@@ -31,7 +39,7 @@ const RRF_K = 60
  * index, retrieval returns plain text any model can consume. */
 export class MemoryService {
   private readonly deps: MemoryServiceDeps
-  private watcher: FSWatcher | undefined
+  private watchers: FSWatcher[] = []
   private scanTimer: NodeJS.Timeout | undefined
 
   constructor(deps: MemoryServiceDeps) {
@@ -158,11 +166,9 @@ export class MemoryService {
     return rel
   }
 
-  /** Watch index dirs; debounce rescans + re-embeds. */
+  /** Watch index dirs (native recursive FSEvents — one fd per root, not
+   * one per file); debounce rescans + re-embeds. */
   startWatching(onRescan?: () => void): void {
-    const dirs = this.absDirs().filter((d) => existsSync(d))
-    if (dirs.length === 0) return
-    this.watcher = watch(dirs, { ignoreInitial: true, awaitWriteFinish: true })
     const trigger = () => {
       clearTimeout(this.scanTimer)
       this.scanTimer = setTimeout(() => {
@@ -170,12 +176,17 @@ export class MemoryService {
         void this.embedMissing().then(() => onRescan?.())
       }, 1500)
     }
-    this.watcher.on('add', trigger).on('change', trigger).on('unlink', trigger)
+    for (const dir of this.absDirs().filter((d) => existsSync(d))) {
+      const watcher = watch(dir, { recursive: true }, trigger)
+      watcher.on('error', (err) => this.deps.log?.(`memory watcher error: ${err.message}`))
+      this.watchers.push(watcher)
+    }
   }
 
   async close(): Promise<void> {
     clearTimeout(this.scanTimer)
-    await this.watcher?.close()
+    for (const watcher of this.watchers) watcher.close()
+    this.watchers = []
   }
 }
 

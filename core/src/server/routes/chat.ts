@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { TASK_CLASSES } from '../../config/schema.js'
 import { buildSystemPrompt } from '../../memory/context.js'
+import { providerCallOptions } from '../../providers/options.js'
 import { budgetStatus, exhaustedProviders } from '../../router/budget.js'
 import { classify, type ChatMessage } from '../../router/classify.js'
 import { selectModel } from '../../router/select.js'
@@ -92,11 +93,7 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
       if (!reply.raw.writableEnded) abort.abort()
     })
 
-    const providerCfg = ctx.config.providers[selection.entry.provider]
-    const providerOptions =
-      providerCfg?.kind === 'ollama' && providerCfg.numCtx
-        ? { ollama: { options: { num_ctx: providerCfg.numCtx } } }
-        : undefined
+    const providerOptions = providerCallOptions(ctx.config, selection.entry.provider)
 
     try {
       const result = streamText({

@@ -4,11 +4,14 @@ import fastifyStatic from '@fastify/static'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { existsSync } from 'node:fs'
 import type { HaloConfig } from '../config/schema.js'
+import type { GoalEngine } from '../goals/engine.js'
+import type { GoalStore } from '../goals/goal-file.js'
 import type { MemoryService } from '../memory/service.js'
 import type { Meter } from '../meter/meter.js'
 import type { ModelSource } from '../providers/registry.js'
 import { isLoopback, tokenMatches } from './auth.js'
 import { registerChatRoute } from './routes/chat.js'
+import { registerGoalRoutes } from './routes/goals.js'
 import { registerMemoryRoutes } from './routes/memory.js'
 import { registerModelRoutes } from './routes/models.js'
 
@@ -27,6 +30,8 @@ export interface AppContext {
   memoryStats?: () => { notes: number; embedded: number }
   /** Cortana persona text prepended to every system prompt. */
   persona?: string | null
+  /** Goal engine; absent = goal routes disabled. */
+  goals?: { store: GoalStore; engine: GoalEngine }
 }
 
 export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
@@ -65,6 +70,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   registerModelRoutes(app, ctx)
   registerChatRoute(app, ctx)
   registerMemoryRoutes(app, ctx)
+  registerGoalRoutes(app, ctx)
 
   if (ctx.webDist && existsSync(ctx.webDist)) {
     await app.register(fastifyStatic, { root: ctx.webDist })

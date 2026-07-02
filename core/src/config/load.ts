@@ -25,6 +25,9 @@ export function parseConfig(yamlText: string): HaloConfig {
     ...config,
     dataDir: expandHome(config.dataDir),
     vault: { ...config.vault, path: expandHome(config.vault.path) },
+    projects: Object.fromEntries(
+      Object.entries(config.projects).map(([name, p]) => [name, expandHome(p)]),
+    ),
   }
 }
 

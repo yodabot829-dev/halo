@@ -71,6 +71,32 @@ export const configSchema = z.object({
       classOrder: z.partialRecord(taskClassEnum, z.array(tierEnum).min(1)).default({}),
     })
     .default({ classOrder: {} }),
+  // Registered project directories — executors are confined to these.
+  projects: z.record(z.string(), z.string()).default({}),
+  executors: z
+    .object({
+      default: z.string().default('claude-code'),
+      claudeCode: z
+        .object({
+          command: z.string().default('claude'),
+          args: z.array(z.string()).default(['--permission-mode', 'acceptEdits']),
+        })
+        .prefault({}),
+      codex: z
+        .object({
+          command: z.string().default('codex'),
+          args: z.array(z.string()).default([]),
+        })
+        .prefault({}),
+    })
+    .prefault({}),
+  goals: z
+    .object({
+      dir: z.string().default('OS/Goals'),
+      maxIterations: z.number().int().min(1).max(10).default(3),
+      stepTimeoutMinutes: z.number().int().min(1).max(240).default(30),
+    })
+    .prefault({}),
 })
 
 export type HaloConfig = z.infer<typeof configSchema>
