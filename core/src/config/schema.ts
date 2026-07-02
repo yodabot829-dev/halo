@@ -47,7 +47,17 @@ export const configSchema = z.object({
   vault: z.object({
     path: z.string().min(1),
     memoryDir: z.string().default('OS/Memory'),
+    // Extra vault folders to index read-only (relative to vault path).
+    indexDirs: z.array(z.string()).default([]),
   }),
+  memory: z
+    .object({
+      embedModel: z.string().default('nomic-embed-text'),
+      injectTopK: z.number().int().min(0).default(6),
+      snippetChars: z.number().int().min(100).default(1500),
+      personaPath: z.string().optional(),
+    })
+    .default({ embedModel: 'nomic-embed-text', injectTopK: 6, snippetChars: 1500 }),
   providers: z.record(z.string(), providerSchema),
   models: z.array(modelSchema).min(1),
   routing: z

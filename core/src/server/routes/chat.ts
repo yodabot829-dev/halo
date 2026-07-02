@@ -2,6 +2,7 @@ import { streamText } from 'ai'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { TASK_CLASSES } from '../../config/schema.js'
+import { buildSystemPrompt } from '../../memory/context.js'
 import { classify, type ChatMessage } from '../../router/classify.js'
 import { selectModel } from '../../router/select.js'
 import type { AppContext } from '../app.js'
@@ -57,11 +58,29 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
       'cache-control': 'no-cache',
       connection: 'keep-alive',
     })
+    // Retrieval before streaming: plain-markdown notes into the system
+    // prompt, so any model — including weak local ones — can use memory.
+    let memoryNotes: { title: string; content: string }[] = []
+    const topK = ctx.config.memory.injectTopK
+    if (ctx.memory && topK > 0) {
+      const lastUser = [...messages].reverse().find((m) => m.role === 'user')
+      if (lastUser) {
+        try {
+          const results = await ctx.memory.search(lastUser.content.slice(0, 1000), topK)
+          memoryNotes = ctx.memory.contextFor(results)
+        } catch (err) {
+          app.log.error(err, 'memory search failed — continuing without')
+        }
+      }
+    }
+    const system = buildSystemPrompt(ctx.persona ?? null, memoryNotes)
+
     sse(reply, 'meta', {
       model: selection.entry.ref,
       label: selection.entry.label,
       taskClass,
       reason: selection.reason,
+      memoryCount: memoryNotes.length,
     })
 
     const abort = new AbortController()
@@ -80,6 +99,7 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
     try {
       const result = streamText({
         model: ctx.registry.resolve(selection.entry.ref),
+        system,
         messages,
         abortSignal: abort.signal,
         providerOptions,

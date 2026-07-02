@@ -10,6 +10,14 @@ dataDir: ~/.halo/data
 vault:
   path: ~/Documents/Openclaw yodabot
   memoryDir: OS/Memory
+  indexDirs: # extra vault folders indexed read-only
+    - Claude Memory
+
+memory:
+  embedModel: nomic-embed-text
+  injectTopK: 6
+  snippetChars: 1500
+  personaPath: ~/.cortana/cortana-persona.md
 
 providers:
   anthropic:
