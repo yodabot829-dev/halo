@@ -22,6 +22,7 @@ export function selectModel(
   models: readonly ModelEntry[],
   config: HaloConfig,
   overrideRef?: string,
+  exhausted: ReadonlySet<string> = new Set(),
 ): Selection {
   const available = models.filter((m) => m.available)
   if (available.length === 0) {
@@ -29,6 +30,7 @@ export function selectModel(
   }
 
   if (overrideRef) {
+    // Explicit choice wins even over an exhausted budget — the user pays knowingly.
     const entry = available.find((m) => m.ref === overrideRef)
     if (!entry) throw new Error(`Requested model "${overrideRef}" is not available`)
     return { entry, taskClass, reason: 'user override' }
@@ -37,15 +39,19 @@ export function selectModel(
   const order: readonly Tier[] =
     config.routing.classOrder[taskClass] ?? DEFAULT_CLASS_ORDER[taskClass]
 
-  const capable = available.filter((m) => m.classes.includes(taskClass))
+  const withinBudget = available.filter((m) => !exhausted.has(m.provider))
+  const skipped = available.length - withinBudget.length
+  const budgetNote = skipped > 0 ? `; ${skipped} model(s) skipped, budget exhausted` : ''
+
+  const capable = withinBudget.filter((m) => m.classes.includes(taskClass))
   for (const tier of order) {
     const entry = capable.find((m) => m.tier === tier)
     if (entry) {
-      return { entry, taskClass, reason: `class=${taskClass} → tier=${tier}` }
+      return { entry, taskClass, reason: `class=${taskClass} → tier=${tier}${budgetNote}` }
     }
   }
 
-  // Nothing declares this class: degrade gracefully to any available model.
-  const fallback = available[0]!
+  // Nothing declares this class: degrade gracefully to any usable model.
+  const fallback = withinBudget[0] ?? available[0]!
   return { entry: fallback, taskClass, reason: `no model declares class=${taskClass}; fallback` }
 }

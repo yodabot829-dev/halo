@@ -59,6 +59,12 @@ export const configSchema = z.object({
     })
     .default({ embedModel: 'nomic-embed-text', injectTopK: 6, snippetChars: 1500 }),
   providers: z.record(z.string(), providerSchema),
+  // Declared monthly token allowances per provider. Absent = unmetered
+  // (flat subscription or local). Exhausted providers are skipped by
+  // auto-routing; explicit user override still works.
+  budgets: z
+    .record(z.string(), z.object({ monthlyTokens: z.number().int().min(1) }))
+    .default({}),
   models: z.array(modelSchema).min(1),
   routing: z
     .object({

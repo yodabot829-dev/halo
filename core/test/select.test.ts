@@ -90,4 +90,21 @@ describe('selectModel', () => {
     const models = [entry('ollama/gemma3:12b', ['chat'], 'free', false)]
     expect(() => selectModel('chat', models, config)).toThrow(/No models available/)
   })
+
+  it('skips providers with exhausted budgets and says so', () => {
+    const sel = selectModel('chat', MODELS, config, undefined, new Set(['synthetic']))
+    expect(sel.entry.ref).toBe('ollama/gemma3:12b')
+    expect(sel.reason).toContain('budget exhausted')
+  })
+
+  it('user override beats an exhausted budget', () => {
+    const sel = selectModel(
+      'chat',
+      MODELS,
+      config,
+      'synthetic/hf:zai-org/GLM-5',
+      new Set(['synthetic']),
+    )
+    expect(sel.entry.ref).toBe('synthetic/hf:zai-org/GLM-5')
+  })
 })

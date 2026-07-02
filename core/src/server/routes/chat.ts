@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { TASK_CLASSES } from '../../config/schema.js'
 import { buildSystemPrompt } from '../../memory/context.js'
+import { budgetStatus, exhaustedProviders } from '../../router/budget.js'
 import { classify, type ChatMessage } from '../../router/classify.js'
 import { selectModel } from '../../router/select.js'
 import type { AppContext } from '../app.js'
@@ -46,9 +47,10 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
     const { messages, model: overrideRef, taskClass: forcedClass } = parsed.data
 
     const taskClass = forcedClass ?? classify(messages as ChatMessage[])
+    const exhausted = exhaustedProviders(budgetStatus(ctx.config, ctx.meter, new Date()))
     let selection
     try {
-      selection = selectModel(taskClass, ctx.registry.list(), ctx.config, overrideRef)
+      selection = selectModel(taskClass, ctx.registry.list(), ctx.config, overrideRef, exhausted)
     } catch (err) {
       return reply.code(503).send({ success: false, error: (err as Error).message })
     }
@@ -128,6 +130,7 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
         inputTokens: 0,
         outputTokens: 0,
         ok: false,
+        status: abort.signal.aborted ? 'cancelled' : 'error',
       })
       app.log.error(err, 'chat stream failed')
       const aborted = abort.signal.aborted

@@ -184,6 +184,82 @@ body {
   color: var(--muted);
 }
 
+.nav {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-item {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.nav-item.active {
+  background: var(--chip-bg);
+  color: var(--fg);
+}
+
+.ops {
+  padding: 28px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ops h2 {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.budget-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.budget-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.budget-name {
+  font-weight: 500;
+}
+
+.budget-figures {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.budget-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  overflow: hidden;
+}
+
+.budget-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+
+.budget-fill.hot {
+  background: #d43c3c;
+}
+
 .empty .halo-ring {
   width: 72px;
   height: 72px;

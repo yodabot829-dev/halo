@@ -2,6 +2,8 @@ import Database from 'better-sqlite3'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
+export type CallStatus = 'ok' | 'error' | 'cancelled'
+
 export interface CallRecord {
   provider: string
   model: string
@@ -9,6 +11,7 @@ export interface CallRecord {
   inputTokens: number
   outputTokens: number
   ok: boolean
+  status?: CallStatus
 }
 
 export interface ProviderTotals {
@@ -42,15 +45,41 @@ export class Meter {
       );
       CREATE INDEX IF NOT EXISTS idx_calls_provider_ts ON calls(provider, ts);
     `)
+    // Additive migration for pre-status databases.
+    const cols = this.db.prepare('PRAGMA table_info(calls)').all() as { name: string }[]
+    if (!cols.some((c) => c.name === 'status')) {
+      this.db.exec("ALTER TABLE calls ADD COLUMN status TEXT NOT NULL DEFAULT 'ok'")
+    }
   }
 
   record(call: CallRecord, ts = Date.now()): void {
+    const status: CallStatus = call.status ?? (call.ok ? 'ok' : 'error')
     this.db
       .prepare(
-        `INSERT INTO calls (ts, provider, model, task_class, input_tokens, output_tokens, ok)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO calls (ts, provider, model, task_class, input_tokens, output_tokens, ok, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(ts, call.provider, call.model, call.taskClass, call.inputTokens, call.outputTokens, call.ok ? 1 : 0)
+      .run(
+        ts,
+        call.provider,
+        call.model,
+        call.taskClass,
+        call.inputTokens,
+        call.outputTokens,
+        call.ok ? 1 : 0,
+        status,
+      )
+  }
+
+  /** Total tokens (in+out) per provider since a timestamp — budget burn. */
+  tokensSince(sinceTs: number): Map<string, number> {
+    const rows = this.db
+      .prepare(
+        `SELECT provider, COALESCE(SUM(input_tokens + output_tokens), 0) AS tokens
+         FROM calls WHERE ts >= ? GROUP BY provider`,
+      )
+      .all(sinceTs) as { provider: string; tokens: number }[]
+    return new Map(rows.map((r) => [r.provider, r.tokens]))
   }
 
   totals(sinceTs = 0): ProviderTotals[] {

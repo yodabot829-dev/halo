@@ -71,6 +71,13 @@ models:
     classes: [chat, summarise]
     tier: free
 
+# Monthly token allowances. Absent = unmetered (flat subscription / local).
+# Auto-routing skips exhausted providers; explicit override still works.
+budgets:
+  synthetic: { monthlyTokens: 60000000 } # adjust to your actual Synthetic quota
+  # openai: { monthlyTokens: 5000000 }
+  # openrouter: { monthlyTokens: 2000000 }
+
 routing:
   classOrder:
     chat: [quota, free, premium]
