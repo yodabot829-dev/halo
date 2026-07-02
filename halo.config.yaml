@@ -94,6 +94,13 @@ goals:
   maxIterations: 3
   stepTimeoutMinutes: 30
 
+voice:
+  engine: local # Kokoro ONNX in a HALO-managed worker; unloads after idle
+  ttsVoice: af_sky
+  ttsSpeed: 1.1
+  ttsDtype: q8 # ~92MB model; fp32 (~326MB) for maximum quality
+  idleUnloadMinutes: 10
+
 # Monthly token allowances. Absent = unmetered (flat subscription / local).
 # Auto-routing skips exhausted providers; explicit override still works.
 budgets:

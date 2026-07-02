@@ -13,6 +13,7 @@ providers:
 models:
   - { ref: ollama/mock, classes: [chat], tier: free }
 voice:
+  engine: http # keep tests offline — no worker spawn, no model download
   sttUrl: http://127.0.0.1:1/v1
   ttsUrl: http://127.0.0.1:1/v1
 `)

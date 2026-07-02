@@ -15,8 +15,12 @@
   "engines": {
     "node": ">=20.19"
   },
+  "overrides": {
+    "onnxruntime-node": "^1.27.0"
+  },
   "allowScripts": {
     "better-sqlite3@12.11.1": true,
-    "esbuild@0.28.1": true
+    "esbuild@0.28.1": true,
+    "onnxruntime-node@1.27.0": true
   }
 }

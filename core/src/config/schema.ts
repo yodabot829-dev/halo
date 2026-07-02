@@ -97,13 +97,18 @@ export const configSchema = z.object({
       stepTimeoutMinutes: z.number().int().min(1).max(240).default(30),
     })
     .prefault({}),
-  // Fully local voice stack (whisper.cpp + Kokoro via voicemode) — £0.
+  // Fully local voice stack — £0. STT: whisper.cpp server. TTS: 'local'
+  // runs Kokoro ONNX in a HALO-managed worker (spawned on demand, killed
+  // after idle so the memory returns); 'http' uses an external Kokoro server.
   voice: z
     .object({
       sttUrl: z.url().default('http://127.0.0.1:2022/v1'),
+      engine: z.enum(['local', 'http']).default('local'),
       ttsUrl: z.url().default('http://127.0.0.1:8880/v1'),
       ttsVoice: z.string().default('af_sky'),
       ttsSpeed: z.number().min(0.5).max(2).default(1.1),
+      ttsDtype: z.enum(['fp32', 'fp16', 'q8', 'q4', 'q4f16']).default('q8'),
+      idleUnloadMinutes: z.number().int().min(1).max(240).default(10),
     })
     .prefault({}),
 })

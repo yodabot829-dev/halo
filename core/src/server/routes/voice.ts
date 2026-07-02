@@ -1,12 +1,26 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { synthesize, toWav16k, transcribe } from '../../voice/client.js'
+import { LocalTts } from '../../voice/kokoro-local.js'
 import type { AppContext } from '../app.js'
 
 const ttsSchema = z.object({ text: z.string().min(1).max(4000) })
 const MAX_AUDIO_BYTES = 15 * 1024 * 1024
 
 export function registerVoiceRoutes(app: FastifyInstance, ctx: AppContext): void {
+  const localTts =
+    ctx.config.voice.engine === 'local'
+      ? new LocalTts({
+          voice: ctx.config.voice.ttsVoice,
+          speed: ctx.config.voice.ttsSpeed,
+          dtype: ctx.config.voice.ttsDtype,
+          idleUnloadMs: ctx.config.voice.idleUnloadMinutes * 60_000,
+          log: (msg) => app.log.info(msg),
+        })
+      : null
+  if (localTts) {
+    app.addHook('onClose', async () => localTts.kill())
+  }
   app.addContentTypeParser(
     ['audio/webm', 'audio/wav', 'audio/mp4', 'application/octet-stream'],
     { parseAs: 'buffer', bodyLimit: MAX_AUDIO_BYTES },
@@ -35,13 +49,20 @@ export function registerVoiceRoutes(app: FastifyInstance, ctx: AppContext): void
       return reply.code(400).send({ success: false, error: 'invalid request body' })
     }
     try {
+      if (localTts) {
+        const wav = await localTts.synthesize(parsed.data.text)
+        return reply.header('content-type', 'audio/wav').send(wav)
+      }
       const audio = await synthesize(ctx.config.voice, parsed.data.text)
       return reply.header('content-type', 'audio/mpeg').send(audio)
     } catch (err) {
       app.log.error(err, 'tts failed')
-      return reply
-        .code(503)
-        .send({ success: false, error: 'speech unavailable — is kokoro running?' })
+      return reply.code(503).send({
+        success: false,
+        error: localTts
+          ? 'speech unavailable — local TTS worker failed, see server log'
+          : 'speech unavailable — is kokoro running?',
+      })
     }
   })
 }
