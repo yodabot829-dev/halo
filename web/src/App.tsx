@@ -1,10 +1,20 @@
 import { useState } from 'react'
 import { Chat } from './chat/Chat'
 import { Goals } from './goals/Goals'
+import { Memory } from './memory/Memory'
 import { Ops } from './ops/Ops'
+import { Projects } from './projects/Projects'
 
-const VIEWS = ['Chat', 'Goals', 'Ops'] as const
+const VIEWS = ['Chat', 'Projects', 'Goals', 'Memory', 'Ops'] as const
 type View = (typeof VIEWS)[number]
+
+const VIEW_COMPONENTS: Record<View, () => React.JSX.Element> = {
+  Chat,
+  Projects,
+  Goals,
+  Memory,
+  Ops,
+}
 
 export function App() {
   const [view, setView] = useState<View>('Chat')
@@ -26,7 +36,10 @@ export function App() {
         </nav>
         <span className="sub">Cortana · multi-model</span>
       </header>
-      {view === 'Chat' ? <Chat /> : view === 'Goals' ? <Goals /> : <Ops />}
+      {(() => {
+        const Active = VIEW_COMPONENTS[view]
+        return <Active />
+      })()}
     </div>
   )
 }
