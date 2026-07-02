@@ -2,7 +2,22 @@
 
 Updated: 2026-07-02 (evening)
 
-## Latest
+## Latest (video-feature round — 4 items, all shipped)
+
+- **Approval layer + Work board** — actions with `approval: true` draft first and
+  park as `awaiting_approval`; Board tab has Approve/Reject (reject feedback feeds
+  next draft), running strip, routines with next-fire, activity feed. vault-cleanup
+  example (merge/re-file only). Nate B Jones's "draft never sends itself".
+- **Graphify integration** — per-project "Build/Update graph" + blast-radius/
+  architecture Q&A on project pages (`/api/projects/:name/graph|ask`, runAdhoc).
+- **Project-scoped chat** — `@project` picker injects that project's STATE + memory.
+- **Small wins** — token cost chip on chat replies; `goals.judge: panel` (3-lens
+  unanimous); skill-audit "dreaming" cron at 03:00 nightly.
+- **Executor note:** default reverted to claude-code. Codex fallback is BLOCKED —
+  codex CLI rejects every model on the current ChatGPT plan ("not supported with a
+  ChatGPT account"); needs plan change or re-login before it can cover Claude's 5h limit.
+
+## Earlier today
 
 - **Slice 8 (Chase AI video-inspired)** — Actions command center: one-click
   buttons dispatch headless executor runs, optional cron routines, run logs in
