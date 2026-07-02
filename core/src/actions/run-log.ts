@@ -2,7 +2,14 @@ import matter from 'gray-matter'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-export type RunStatus = 'running' | 'done' | 'failed' | 'stopped'
+export type RunStatus =
+  | 'running'
+  | 'done'
+  | 'failed'
+  | 'stopped'
+  | 'awaiting_approval'
+  | 'approved'
+  | 'rejected'
 
 export interface RunRecord {
   id: string // <timestamp>-<action>
@@ -12,8 +19,14 @@ export interface RunRecord {
   finishedAt?: string
   executor: string
   project: string
-  /** Final output (RESULT summary or tail). */
+  /** Final output (RESULT summary or tail). For approval actions the draft. */
   output: string
+  /** Phase of a two-phase (approval) action. */
+  phase?: 'draft' | 'apply'
+  /** For apply runs: the draft run id they execute. */
+  appliedFrom?: string
+  /** Reviewer feedback on rejection — feeds the next run's loop history. */
+  feedback?: string
 }
 
 /** Runs live as markdown in the vault (OS/Runs/<action>/<id>.md) — the
@@ -34,8 +47,18 @@ export class RunLog {
       finishedAt: run.finishedAt ?? null,
       executor: run.executor,
       project: run.project,
+      ...(run.phase ? { phase: run.phase } : {}),
+      ...(run.appliedFrom ? { appliedFrom: run.appliedFrom } : {}),
+      ...(run.feedback ? { feedback: run.feedback } : {}),
     })
     writeFileSync(join(this.actionDir(run.action), `${run.id}.md`), body, 'utf8')
+  }
+
+  get(action: string, id: string): RunRecord | undefined {
+    if (!/^[A-Za-z0-9-]+$/.test(id)) return undefined
+    const file = `${id}.md`
+    if (!existsSync(join(this.actionDir(action), file))) return undefined
+    return this.parse(action, file)
   }
 
   /** Most recent runs for one action, newest first. */
@@ -79,6 +102,9 @@ export class RunLog {
       executor: String(meta['executor'] ?? ''),
       project: String(meta['project'] ?? ''),
       output: content.replace(/^## Output\n/, '').trim(),
+      phase: meta['phase'] ? (meta['phase'] as 'draft' | 'apply') : undefined,
+      appliedFrom: meta['appliedFrom'] ? String(meta['appliedFrom']) : undefined,
+      feedback: meta['feedback'] ? String(meta['feedback']) : undefined,
     }
   }
 }

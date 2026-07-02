@@ -30,7 +30,7 @@ export function Actions() {
   const { actions, runs, error, run } = useActions()
 
   return (
-    <div className="actions">
+    <div className="actions-embed">
       <h2>Actions</h2>
       <div className="action-grid">
         {actions.map((a) => (

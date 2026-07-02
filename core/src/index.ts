@@ -64,6 +64,7 @@ const actionRunner = new ActionRunner({
   stepTimeoutMs: config.goals.stepTimeoutMinutes * 60_000,
   log: (msg) => console.info(msg),
 })
+const scheduler = new ActionScheduler(actionRunner, (msg) => console.warn(msg))
 
 const app = await buildApp({
   config,
@@ -73,7 +74,7 @@ const app = await buildApp({
   memoryStats: () => memoryStore.count(),
   persona,
   goals: { store: goalStore, engine: goalEngine },
-  actions: { runner: actionRunner, runLog },
+  actions: { runner: actionRunner, runLog, scheduler },
   authToken: process.env['HALO_TOKEN'],
   webDist: resolve(here, '../../web/dist'),
 })
@@ -88,7 +89,6 @@ void memory.embedMissing().then((n) => {
 })
 memory.startWatching()
 
-const scheduler = new ActionScheduler(actionRunner, (msg) => app.log.warn(msg))
 const cronResult = scheduler.start(
   config.actions.flatMap((a) => (a.schedule ? [{ name: a.name, schedule: a.schedule }] : [])),
 )

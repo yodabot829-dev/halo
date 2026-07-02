@@ -4,6 +4,7 @@ import fastifyStatic from '@fastify/static'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { existsSync } from 'node:fs'
 import type { ActionRunner } from '../actions/runner.js'
+import type { ActionScheduler } from '../actions/scheduler.js'
 import type { RunLog } from '../actions/run-log.js'
 import type { HaloConfig } from '../config/schema.js'
 import type { GoalEngine } from '../goals/engine.js'
@@ -38,7 +39,7 @@ export interface AppContext {
   /** Goal engine; absent = goal routes disabled. */
   goals?: { store: GoalStore; engine: GoalEngine }
   /** One-click actions; absent = action routes disabled. */
-  actions?: { runner: ActionRunner; runLog: RunLog }
+  actions?: { runner: ActionRunner; runLog: RunLog; scheduler?: ActionScheduler }
 }
 
 export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {

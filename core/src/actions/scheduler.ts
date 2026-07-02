@@ -8,7 +8,7 @@ export interface ScheduledAction {
 
 /** Cron automations over actions — the video's "routines". */
 export class ActionScheduler {
-  private jobs: Cron[] = []
+  private jobs: { name: string; schedule: string; job: Cron }[] = []
 
   constructor(
     private readonly runner: ActionRunner,
@@ -25,7 +25,7 @@ export class ActionScheduler {
             this.log?.(`scheduled action ${action.name} failed: ${(err as Error).message}`)
           })
         })
-        this.jobs.push(job)
+        this.jobs.push({ name: action.name, schedule: action.schedule, job })
         scheduled.push(`${action.name} @ ${action.schedule}`)
       } catch {
         invalid.push(`${action.name}: bad cron "${action.schedule}"`)
@@ -34,8 +34,16 @@ export class ActionScheduler {
     return { scheduled, invalid }
   }
 
+  nextRuns(): { name: string; schedule: string; nextRun: string | null }[] {
+    return this.jobs.map(({ name, schedule, job }) => ({
+      name,
+      schedule,
+      nextRun: job.nextRun()?.toISOString() ?? null,
+    }))
+  }
+
   stop(): void {
-    for (const job of this.jobs) job.stop()
+    for (const { job } of this.jobs) job.stop()
     this.jobs = []
   }
 }

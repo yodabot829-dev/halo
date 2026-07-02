@@ -128,6 +128,21 @@ actions:
       INDEX.md that briefly describes what lives there, lists key subfolders
       with one-line descriptions, and links notable recent files. Keep each
       INDEX.md under 60 lines. Report what changed.
+  - name: vault-cleanup
+    label: Vault cleanup (draft → approve)
+    project: vault
+    loop: true
+    approval: true # draft first; nothing moves until approved on the Board
+    prompt: >
+      Review the OS/ folder tree of this Obsidian vault (Memory, Goals, Runs,
+      Reports). Propose a cleanup plan as a numbered list: files to merge,
+      rename, or re-file for clarity. NEVER propose deleting anything —
+      consolidate only. Each item: exact source path → exact action → exact
+      destination. Keep it under 15 items, highest value first.
+    applyPrompt: >
+      Execute the approved cleanup plan below exactly. Only perform the listed
+      merge/rename/re-file operations — do not delete files, do not touch
+      anything not in the plan. Report each operation as done/skipped with reason.
   - name: morning-brief
     label: Morning brief
     project: halo

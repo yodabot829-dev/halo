@@ -111,6 +111,13 @@ export const configSchema = z.object({
         schedule: z.string().optional(), // cron expression
         loop: z.boolean().default(true),
         historyRuns: z.number().int().min(0).max(10).default(3),
+        // Two-phase: the prompt only DRAFTS (no side effects); the run then
+        // waits for human approval, and applyPrompt executes the approved draft.
+        approval: z.boolean().default(false),
+        applyPrompt: z
+          .string()
+          .max(4000)
+          .default('Execute the approved draft below exactly as written. Do not redesign it.'),
       }),
     )
     .default([]),
