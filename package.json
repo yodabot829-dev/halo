@@ -1,0 +1,22 @@
+{
+  "name": "halo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "HALO — personal agentic OS. Multi-LLM routing, vault memory, voice, project ops.",
+  "workspaces": [
+    "core",
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w core",
+    "test": "npm run test -w core",
+    "build": "npm run build -w web && npm run build -w core"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "esbuild@0.28.1": true
+  }
+}

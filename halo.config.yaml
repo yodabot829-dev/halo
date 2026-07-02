@@ -1,0 +1,72 @@
+# HALO configuration — NO SECRETS IN THIS FILE.
+# API keys are injected as env vars via `infisical run -- npm run dev`.
+
+server:
+  port: 4720
+  bind: 127.0.0.1 # switch to Tailscale IP at daemon install (slice 7)
+
+dataDir: ~/.halo/data
+
+vault:
+  path: ~/Documents/Openclaw yodabot
+  memoryDir: OS/Memory
+
+providers:
+  anthropic:
+    kind: anthropic
+    apiKeyEnv: ANTHROPIC_API_KEY
+  openai:
+    kind: openai
+    apiKeyEnv: OPENAI_API_KEY
+  synthetic:
+    kind: anthropic # Synthetic exposes an Anthropic-compatible API
+    baseURL: https://api.synthetic.new/anthropic/v1
+    apiKeyEnv: SYNTHETIC_API_KEY
+  openrouter:
+    kind: openrouter
+    apiKeyEnv: OPENROUTER_API_KEY
+  google:
+    kind: google
+    apiKeyEnv: GEMINI_API_KEY
+  ollama:
+    kind: ollama
+    baseURL: http://127.0.0.1:11434/api
+    numCtx: 8192 # 131k default KV cache stalls this 16GB machine
+
+models:
+  - ref: anthropic/claude-sonnet-5
+    label: Claude Sonnet 5
+    classes: [chat, code, reason, vision]
+    tier: premium
+  - ref: openai/gpt-5.1
+    label: GPT-5.1
+    classes: [chat, code, reason, vision]
+    tier: premium
+  - ref: synthetic/hf:zai-org/GLM-5
+    label: GLM-5 (Synthetic)
+    classes: [chat, code, reason, vision]
+    tier: quota
+  - ref: synthetic/hf:moonshotai/Kimi-K2.5
+    label: Kimi K2.5 (Synthetic)
+    classes: [chat, reason, vision]
+    tier: quota
+  - ref: synthetic/hf:MiniMaxAI/MiniMax-M2.5
+    label: MiniMax M2.5 (Synthetic)
+    classes: [chat, summarise]
+    tier: quota
+  - ref: synthetic/hf:Qwen/Qwen3-Coder-480B-A35B-Instruct
+    label: Qwen3 Coder (Synthetic)
+    classes: [code]
+    tier: quota
+  - ref: ollama/gemma3:12b
+    label: Gemma 3 12B (local)
+    classes: [chat, summarise]
+    tier: free
+
+routing:
+  classOrder:
+    chat: [quota, free, premium]
+    summarise: [free, quota]
+    code: [quota, premium] # burn Synthetic quota before premium credits
+    reason: [premium, quota]
+    vision: [quota, premium]

@@ -1,0 +1,66 @@
+import cors from '@fastify/cors'
+import rateLimit from '@fastify/rate-limit'
+import fastifyStatic from '@fastify/static'
+import Fastify, { type FastifyInstance } from 'fastify'
+import { existsSync } from 'node:fs'
+import type { HaloConfig } from '../config/schema.js'
+import type { Meter } from '../meter/meter.js'
+import type { ModelSource } from '../providers/registry.js'
+import { isLoopback, tokenMatches } from './auth.js'
+import { registerChatRoute } from './routes/chat.js'
+import { registerModelRoutes } from './routes/models.js'
+
+export interface AppContext {
+  config: HaloConfig
+  registry: ModelSource
+  meter: Meter
+  /** Bearer token for API auth. Required unless bound to loopback. */
+  authToken?: string
+  /** Absolute path to built web assets; served at / when present. */
+  webDist?: string
+  /** Fastify logger flag; tests pass false. */
+  logger?: boolean
+}
+
+export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
+  if (!ctx.authToken && !isLoopback(ctx.config.server.bind)) {
+    throw new Error(
+      `Refusing to bind ${ctx.config.server.bind} without HALO_TOKEN — ` +
+        'a non-loopback bind with auth disabled would expose the API to the network',
+    )
+  }
+
+  const app = Fastify({ logger: ctx.logger ?? true })
+
+  // SPA is served same-origin by this daemon; cross-origin callers are only
+  // ever allowed when explicitly listed in config.
+  const origins = ctx.config.server.corsOrigins
+  if (origins.length > 0) {
+    await app.register(cors, { origin: origins, credentials: false })
+  }
+
+  await app.register(rateLimit, {
+    max: ctx.config.server.rateLimitPerMinute,
+    timeWindow: '1 minute',
+  })
+
+  app.addHook('onRequest', async (req, reply) => {
+    if (!ctx.authToken) return
+    if (!req.url.startsWith('/api/')) return
+    if (!tokenMatches(req.headers.authorization, ctx.authToken)) {
+      await reply.code(401).send({ success: false, error: 'unauthorized' })
+      return reply
+    }
+  })
+
+  app.get('/api/health', async () => ({ success: true, data: { status: 'ok' } }))
+
+  registerModelRoutes(app, ctx)
+  registerChatRoute(app, ctx)
+
+  if (ctx.webDist && existsSync(ctx.webDist)) {
+    await app.register(fastifyStatic, { root: ctx.webDist })
+  }
+
+  return app
+}
