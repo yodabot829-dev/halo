@@ -2,13 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import type { ModelEntry } from '../api'
 import { fetchModels } from '../api'
 import { useChat } from './useChat'
+import { useVoice } from './useVoice'
 
 export function Chat() {
   const { messages, streaming, error, send, stop } = useChat()
+  const { micState, voiceError, startRecording, stopRecording, speak } = useVoice()
   const [models, setModels] = useState<ModelEntry[]>([])
   const [override, setOverride] = useState('')
   const [draft, setDraft] = useState('')
+  const [speakReplies, setSpeakReplies] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const spokenCountRef = useRef(0)
 
   useEffect(() => {
     fetchModels().then(setModels).catch(console.error)
@@ -18,11 +22,31 @@ export function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const submit = () => {
-    const text = draft.trim()
-    if (!text || streaming) return
+  // Speak each assistant reply once, when its stream completes.
+  useEffect(() => {
+    if (streaming || !speakReplies) return
+    if (messages.length <= spokenCountRef.current) return
+    const last = messages[messages.length - 1]
+    if (last?.role === 'assistant' && last.content) {
+      spokenCountRef.current = messages.length
+      void speak(last.content)
+    }
+  }, [streaming, messages, speakReplies, speak])
+
+  const submit = (text = draft) => {
+    const trimmed = text.trim()
+    if (!trimmed || streaming) return
     setDraft('')
-    void send(text, override || undefined)
+    void send(trimmed, override || undefined)
+  }
+
+  const toggleMic = async () => {
+    if (micState === 'recording') {
+      const text = await stopRecording()
+      if (text) submit(text)
+    } else if (micState === 'idle') {
+      await startRecording()
+    }
   }
 
   return (
@@ -34,7 +58,7 @@ export function Chat() {
             <p>
               HALO online.
               <br />
-              Ask anything — the right model answers.
+              Type, or hold the mic and talk.
             </p>
           </div>
         )}
@@ -48,7 +72,7 @@ export function Chat() {
             <div className="bubble">{m.content || (streaming ? '…' : '')}</div>
           </div>
         ))}
-        {error && <div className="error">{error}</div>}
+        {(error ?? voiceError) && <div className="error">{error ?? voiceError}</div>}
         <div ref={bottomRef} />
       </div>
 
@@ -65,7 +89,7 @@ export function Chat() {
         </select>
         <textarea
           value={draft}
-          placeholder="Message HALO"
+          placeholder={micState === 'recording' ? 'Listening…' : 'Message HALO'}
           rows={1}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -75,10 +99,25 @@ export function Chat() {
             }
           }}
         />
+        <button
+          className={`mic${micState === 'recording' ? ' live' : ''}`}
+          title={speakReplies ? 'Voice on (replies spoken)' : 'Push to talk'}
+          onClick={() => void toggleMic()}
+          disabled={micState === 'transcribing'}
+        >
+          {micState === 'recording' ? '◉' : micState === 'transcribing' ? '…' : '🎙'}
+        </button>
+        <button
+          className={`mic${speakReplies ? ' live' : ''}`}
+          title="Speak replies aloud"
+          onClick={() => setSpeakReplies((s) => !s)}
+        >
+          {speakReplies ? '🔊' : '🔇'}
+        </button>
         {streaming ? (
           <button onClick={stop}>Stop</button>
         ) : (
-          <button onClick={submit} disabled={!draft.trim()}>
+          <button onClick={() => submit()} disabled={!draft.trim()}>
             Send
           </button>
         )}

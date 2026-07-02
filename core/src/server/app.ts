@@ -14,6 +14,7 @@ import { registerChatRoute } from './routes/chat.js'
 import { registerGoalRoutes } from './routes/goals.js'
 import { registerMemoryRoutes } from './routes/memory.js'
 import { registerModelRoutes } from './routes/models.js'
+import { registerVoiceRoutes } from './routes/voice.js'
 
 export interface AppContext {
   config: HaloConfig
@@ -71,6 +72,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   registerChatRoute(app, ctx)
   registerMemoryRoutes(app, ctx)
   registerGoalRoutes(app, ctx)
+  registerVoiceRoutes(app, ctx)
 
   if (ctx.webDist && existsSync(ctx.webDist)) {
     await app.register(fastifyStatic, { root: ctx.webDist })

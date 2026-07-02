@@ -173,6 +173,27 @@ body {
   cursor: default;
 }
 
+.composer button.mic {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  width: 44px;
+  padding: 0;
+  font-size: 16px;
+}
+
+.composer button.mic.live {
+  border-color: var(--accent);
+  color: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
 .error {
   color: #d43c3c;
   font-size: 13px;

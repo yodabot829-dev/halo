@@ -97,6 +97,15 @@ export const configSchema = z.object({
       stepTimeoutMinutes: z.number().int().min(1).max(240).default(30),
     })
     .prefault({}),
+  // Fully local voice stack (whisper.cpp + Kokoro via voicemode) — £0.
+  voice: z
+    .object({
+      sttUrl: z.url().default('http://127.0.0.1:2022/v1'),
+      ttsUrl: z.url().default('http://127.0.0.1:8880/v1'),
+      ttsVoice: z.string().default('af_sky'),
+      ttsSpeed: z.number().min(0.5).max(2).default(1.1),
+    })
+    .prefault({}),
 })
 
 export type HaloConfig = z.infer<typeof configSchema>
