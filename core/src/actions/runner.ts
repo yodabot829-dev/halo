@@ -43,6 +43,9 @@ export class ActionRunner {
   private readonly deps: RunnerDeps
   private readonly running = new Set<string>()
   private readonly listeners = new Map<string, Set<(e: ExecEvent) => void>>()
+  // Monotonic suffix so two runs in the same millisecond can't collide on id
+  // (a draft and its apply-run would otherwise overwrite each other).
+  private seq = 0
 
   constructor(deps: RunnerDeps) {
     this.deps = deps
@@ -148,8 +151,9 @@ export class ActionRunner {
     if (!executor?.available()) throw new Error(`Executor "${executorName}" unavailable`)
 
     const startedAt = new Date()
+    const seq = String(this.seq++).padStart(4, '0')
     const run: RunRecord = {
-      id: `${startedAt.toISOString().replace(/[:.]/g, '-')}-${action.name}`,
+      id: `${startedAt.toISOString().replace(/[:.]/g, '-')}-${seq}-${action.name}`,
       action: action.name,
       status: 'running',
       startedAt: startedAt.toISOString(),

@@ -121,17 +121,21 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
         sse(reply, 'delta', { text })
       }
       const usage = await result.usage
+      // Some providers (Synthetic's Anthropic-compatible stream) omit input
+      // tokens from streaming usage — estimate from the prompt so budget
+      // burn-down isn't undercounted. Output falls back to streamed chars.
+      const promptChars = (system?.length ?? 0) + JSON.stringify(messages).length
+      const inputTokens = usage.inputTokens || estimateTokens(promptChars)
+      const outputTokens = usage.outputTokens || estimateTokens(streamedChars)
       safeRecord(app, ctx, {
         provider: selection.entry.provider,
         model: selection.entry.modelId,
         taskClass,
-        inputTokens: usage.inputTokens ?? 0,
-        outputTokens: usage.outputTokens ?? 0,
+        inputTokens,
+        outputTokens,
         ok: true,
       })
-      sse(reply, 'done', {
-        usage: { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 },
-      })
+      sse(reply, 'done', { usage: { inputTokens, outputTokens } })
     } catch (err) {
       // Providers return no usage for aborted streams; estimate from what
       // actually streamed (~4 chars/token) so budget burn-down isn't

@@ -51,6 +51,13 @@ models:
     label: GPT-5.1
     classes: [chat, code, reason, vision]
     tier: premium
+  # GLM-5.2: 744B MoE. Synthetic serves it at 512K context, text-only
+  # ($1.40/$4.40 per M). The full 1M window is z.ai-direct only, not Synthetic.
+  # Top quota-tier workhorse — reason/code preference below routes here.
+  - ref: synthetic/hf:zai-org/GLM-5.2
+    label: GLM-5.2 512K (Synthetic)
+    classes: [chat, code, reason]
+    tier: quota
   - ref: synthetic/hf:zai-org/GLM-5
     label: GLM-5 (Synthetic)
     classes: [chat, code, reason, vision]

@@ -19,6 +19,13 @@ import { ModelRegistry } from './providers/registry.js'
 import { buildApp } from './server/app.js'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
+
+// Load provider keys from a gitignored .env before the registry reads
+// process.env. Same var names the Infisical path injects later; real
+// `infisical run --` env still wins (loadEnvFile does not overwrite).
+const envPath = resolve(here, '../../.env')
+if (existsSync(envPath)) process.loadEnvFile(envPath)
+
 const configPath = process.env['HALO_CONFIG'] ?? resolve(here, '../../halo.config.yaml')
 
 const config = loadConfig(configPath)
