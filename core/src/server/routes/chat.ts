@@ -29,6 +29,11 @@ function sse(reply: FastifyReply, event: string, data: unknown): void {
   reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
 }
 
+/** Rough ~4 chars/token, used only when a provider returns no usage. */
+export function estimateTokens(chars: number): number {
+  return Math.ceil(chars / 4)
+}
+
 /** Metering must never break the response stream — log and continue. */
 function safeRecord(app: FastifyInstance, ctx: AppContext, rec: Parameters<AppContext['meter']['record']>[0]): void {
   try {
@@ -94,6 +99,7 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
     })
 
     const providerOptions = providerCallOptions(ctx.config, selection.entry.provider)
+    let streamedChars = 0
 
     try {
       const result = streamText({
@@ -105,6 +111,7 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
         maxOutputTokens: ctx.config.server.maxOutputTokens,
       })
       for await (const text of result.textStream) {
+        streamedChars += text.length
         sse(reply, 'delta', { text })
       }
       const usage = await result.usage
@@ -120,17 +127,20 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
         usage: { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 },
       })
     } catch (err) {
+      // Providers return no usage for aborted streams; estimate from what
+      // actually streamed (~4 chars/token) so budget burn-down isn't
+      // undercounted by cancellations.
+      const aborted = abort.signal.aborted
       safeRecord(app, ctx, {
         provider: selection.entry.provider,
         model: selection.entry.modelId,
         taskClass,
-        inputTokens: 0,
-        outputTokens: 0,
+        inputTokens: aborted ? estimateTokens(JSON.stringify(messages).length) : 0,
+        outputTokens: aborted ? estimateTokens(streamedChars) : 0,
         ok: false,
-        status: abort.signal.aborted ? 'cancelled' : 'error',
+        status: aborted ? 'cancelled' : 'error',
       })
       app.log.error(err, 'chat stream failed')
-      const aborted = abort.signal.aborted
       sse(reply, 'error', {
         message: aborted ? 'request cancelled' : 'model call failed — see server log',
       })

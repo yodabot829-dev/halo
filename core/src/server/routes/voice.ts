@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { synthesize, toWav16k, transcribe } from '../../voice/client.js'
 import { LocalTts } from '../../voice/kokoro-local.js'
+import { sayFallback } from '../../voice/say-fallback.js'
 import type { AppContext } from '../app.js'
 
 const ttsSchema = z.object({ text: z.string().min(1).max(4000) })
@@ -56,13 +57,16 @@ export function registerVoiceRoutes(app: FastifyInstance, ctx: AppContext): void
       const audio = await synthesize(ctx.config.voice, parsed.data.text)
       return reply.header('content-type', 'audio/mpeg').send(audio)
     } catch (err) {
-      app.log.error(err, 'tts failed')
-      return reply.code(503).send({
-        success: false,
-        error: localTts
-          ? 'speech unavailable — local TTS worker failed, see server log'
-          : 'speech unavailable — is kokoro running?',
-      })
+      app.log.error(err, 'tts failed — trying macOS say fallback')
+      try {
+        const wav = await sayFallback(parsed.data.text)
+        return reply.header('content-type', 'audio/wav').send(wav)
+      } catch (fallbackErr) {
+        app.log.error(fallbackErr, 'say fallback failed too')
+        return reply
+          .code(503)
+          .send({ success: false, error: 'speech unavailable — see server log' })
+      }
     }
   })
 }

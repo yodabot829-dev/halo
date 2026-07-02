@@ -67,8 +67,14 @@ models:
     label: Qwen3 Coder (Synthetic)
     classes: [code]
     tier: quota
+  # 4b first: the 12b (9.3GB loaded) evicts the voice services under memory
+  # pressure on this 16GB machine; 12b stays available via manual override.
+  - ref: ollama/gemma3:4b
+    label: Gemma 3 4B (local)
+    classes: [chat, summarise]
+    tier: free
   - ref: ollama/gemma3:12b
-    label: Gemma 3 12B (local)
+    label: Gemma 3 12B (local, heavy)
     classes: [chat, summarise]
     tier: free
 

@@ -54,13 +54,14 @@ describe('voice routes', () => {
     expect(res.statusCode).toBe(400)
   })
 
-  it('returns 503 with a helpful message when tts backend is down', async () => {
+  it('falls back to macOS say when the tts backend is down', async () => {
     const res = await (await makeApp()).inject({
       method: 'POST',
       url: '/api/voice/tts',
       payload: { text: 'hello' },
     })
-    expect(res.statusCode).toBe(503)
-    expect(res.json().error).toContain('kokoro')
-  })
+    expect(res.statusCode).toBe(200)
+    expect(res.headers['content-type']).toContain('audio/wav')
+    expect(res.rawPayload.subarray(0, 4).toString()).toBe('RIFF')
+  }, 30_000)
 })
