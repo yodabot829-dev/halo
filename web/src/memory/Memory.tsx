@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../api'
+import { MemoryViz } from './MemoryViz'
 
 interface SearchResult {
   path: string
@@ -12,7 +13,7 @@ interface Stats {
   embedded: number
 }
 
-export function Memory() {
+export function Memory({ onOpenProject }: { onOpenProject?: (name: string) => void }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
@@ -47,6 +48,7 @@ export function Memory() {
       <h2>
         Memory{stats ? ` · ${stats.notes.toLocaleString()} notes, ${stats.embedded.toLocaleString()} embedded` : ''}
       </h2>
+      <MemoryViz onOpenProject={onOpenProject} />
       <input
         className="memory-search"
         placeholder="Search everything you and HALO remember…"

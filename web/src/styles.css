@@ -22,6 +22,29 @@
   }
 }
 
+:root {
+  /* Series palette — validated (dataviz six checks) against #ffffff */
+  --s1: #2a78d6;
+  --s2: #1baf7a;
+  --s3: #eda100;
+  --s4: #008300;
+  --s5: #4a3aa7;
+  --s6: #e34948;
+  --sother: #898781;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Same hues stepped for the dark surface (#0e0e0e), validated */
+    --s1: #3987e5;
+    --s2: #199e70;
+    --s3: #c98500;
+    --s4: #008300;
+    --s5: #9085e9;
+    --s6: #e66767;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -497,6 +520,233 @@ button.ghost {
   font-size: 11px;
   opacity: 0.7;
 }
+
+.memviz {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.area-wrap {
+  position: relative;
+}
+
+.area {
+  width: 100%;
+  display: block;
+}
+
+.band {
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.axis-line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.axis-text {
+  fill: var(--muted);
+  font-size: 10px;
+  font-family: inherit;
+}
+
+.crosshair {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.area-tip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  z-index: 2;
+  min-width: 140px;
+}
+
+.tip-title {
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.tip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tip-row b {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.tip-row.total {
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+  padding-top: 4px;
+  color: var(--muted);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.mem-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mem-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mem-row:hover {
+  background: var(--chip-bg);
+}
+
+.mem-name {
+  width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mem-bar-track {
+  flex: 1;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--chip-bg);
+  overflow: hidden;
+}
+
+.mem-bar {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+}
+
+.mem-count {
+  width: 64px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.project-card.clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.project-card.clickable:hover {
+  border-color: var(--accent);
+}
+
+.detail {
+  padding: 28px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.detail-head h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+}
+
+.detail-sub {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.detail-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-card h2 {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.detail-note-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.type-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-done { background: #2e9e5b; }
+.status-running { background: var(--accent); }
+.status-pending, .status-stopped { background: var(--muted); }
+.status-failed { background: #d43c3c; }
 
 .empty .halo-ring {
   width: 72px;

@@ -3,21 +3,20 @@ import { Chat } from './chat/Chat'
 import { Goals } from './goals/Goals'
 import { Memory } from './memory/Memory'
 import { Ops } from './ops/Ops'
+import { ProjectDetail } from './projects/ProjectDetail'
 import { Projects } from './projects/Projects'
 
 const VIEWS = ['Chat', 'Projects', 'Goals', 'Memory', 'Ops'] as const
 type View = (typeof VIEWS)[number]
 
-const VIEW_COMPONENTS: Record<View, () => React.JSX.Element> = {
-  Chat,
-  Projects,
-  Goals,
-  Memory,
-  Ops,
-}
-
 export function App() {
   const [view, setView] = useState<View>('Chat')
+  const [project, setProject] = useState<string | null>(null)
+
+  const open = (v: View) => {
+    setProject(null)
+    setView(v)
+  }
 
   return (
     <div className="app">
@@ -27,8 +26,8 @@ export function App() {
           {VIEWS.map((v) => (
             <button
               key={v}
-              className={`nav-item${view === v ? ' active' : ''}`}
-              onClick={() => setView(v)}
+              className={`nav-item${view === v && !project ? ' active' : ''}`}
+              onClick={() => open(v)}
             >
               {v}
             </button>
@@ -36,10 +35,19 @@ export function App() {
         </nav>
         <span className="sub">Cortana · multi-model</span>
       </header>
-      {(() => {
-        const Active = VIEW_COMPONENTS[view]
-        return <Active />
-      })()}
+      {project ? (
+        <ProjectDetail name={project} onBack={() => setProject(null)} />
+      ) : view === 'Chat' ? (
+        <Chat />
+      ) : view === 'Projects' ? (
+        <Projects onOpen={setProject} />
+      ) : view === 'Goals' ? (
+        <Goals />
+      ) : view === 'Memory' ? (
+        <Memory onOpenProject={setProject} />
+      ) : (
+        <Ops />
+      )}
     </div>
   )
 }

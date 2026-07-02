@@ -11,6 +11,7 @@ import {
 import { join, relative } from 'node:path'
 import { cosine, type EmbedFn } from './embed.js'
 import { parseNote, serializeNote, slugify, type MemoryNote } from './note.js'
+import { aggregateProjectStats, deriveProject } from './project-stats.js'
 import type { MemoryStore } from './store.js'
 
 export interface SearchResult {
@@ -146,6 +147,23 @@ export class MemoryService {
       if (!note) return []
       return [{ title: note.title, content: note.content.slice(0, this.deps.snippetChars) }]
     })
+  }
+
+  projectStats(): import('./project-stats.js').ProjectMemoryStats[] {
+    return aggregateProjectStats(this.deps.store.noteFacts())
+  }
+
+  /** Newest notes belonging to one project (path-derived), for drill-down. */
+  recentNotes(project: string, limit: number): { path: string; title: string; type: string; mtime: number }[] {
+    return this.deps.store
+      .noteFacts()
+      .filter((n) => deriveProject(n.path) === project)
+      .sort((a, b) => b.mtime - a.mtime)
+      .slice(0, limit)
+      .flatMap((n) => {
+        const note = this.deps.store.get(n.path)
+        return note ? [{ path: n.path, title: note.title, type: note.type, mtime: n.mtime }] : []
+      })
   }
 
   /** Write a new note into the canon (first index dir) and index it. */

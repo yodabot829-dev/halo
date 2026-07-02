@@ -12,6 +12,7 @@ vault:
   memoryDir: OS/Memory
   indexDirs: # extra vault folders indexed read-only
     - Claude Memory
+    - Projects
 
 memory:
   embedModel: nomic-embed-text
@@ -83,6 +84,7 @@ projects:
   faceless-youtube: ~/.openclaw/workspace/yodaclaude/faceless-youtube
   salesforce-accelerators: ~/.openclaw/workspace/yodaclaude/salesforce-accelerators
   gemmawatch: ~/.openclaw/workspace/yodaclaude/gemmawatch
+  etsy-store: ~/.openclaw/workspace/yodaclaude/journeyforce # JFStudioTemplates Etsy pipeline
 
 executors:
   default: claude-code # swap to codex to change the primary worker

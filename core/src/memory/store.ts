@@ -96,6 +96,15 @@ export class MemoryStore {
     return new Map(rows.map((r) => [r.path, r.mtime]))
   }
 
+  /** Raw rows for project-level aggregation. */
+  noteFacts(): { path: string; type: string; mtime: number }[] {
+    return this.db.prepare('SELECT path, type, mtime FROM notes').all() as {
+      path: string
+      type: string
+      mtime: number
+    }[]
+  }
+
   count(): { notes: number; embedded: number } {
     const notes = (this.db.prepare('SELECT COUNT(*) c FROM notes').get() as { c: number }).c
     const embedded = (this.db.prepare('SELECT COUNT(*) c FROM embeddings').get() as { c: number }).c

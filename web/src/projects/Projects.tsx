@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../api'
+import { Spark } from './Spark'
 
 interface ProjectInfo {
   name: string
@@ -19,30 +20,7 @@ function ago(iso: string | null): string {
   return `${Math.floor(days / 30)}mo ago`
 }
 
-function Spark({ counts }: { counts: number[] }) {
-  const max = Math.max(...counts, 1)
-  const w = 8
-  return (
-    <svg width={counts.length * w} height="26" className="spark">
-      {counts.map((c, i) => {
-        const h = c === 0 ? 2 : Math.max(3, (c / max) * 24)
-        return (
-          <rect
-            key={i}
-            x={i * w + 1}
-            y={26 - h}
-            width={w - 2}
-            height={h}
-            rx="1.5"
-            className={c === 0 ? 'spark-bar empty' : 'spark-bar'}
-          />
-        )
-      })}
-    </svg>
-  )
-}
-
-export function Projects() {
+export function Projects({ onOpen }: { onOpen?: (name: string) => void }) {
   const [projects, setProjects] = useState<ProjectInfo[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -67,7 +45,11 @@ export function Projects() {
       </h2>
       <div className="project-grid">
         {active.map((p) => (
-          <div key={p.name} className="project-card">
+          <div
+            key={p.name}
+            className="project-card clickable"
+            onClick={() => onOpen?.(p.name)}
+          >
             <div className="project-head">
               <span className="project-name">{p.name}</span>
               <span className="project-when">{ago(p.lastCommitAt)}</span>

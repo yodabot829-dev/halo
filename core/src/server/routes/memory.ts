@@ -41,4 +41,25 @@ export function registerMemoryRoutes(app: FastifyInstance, ctx: AppContext): voi
     success: true,
     data: ctx.memoryStats?.() ?? null,
   }))
+
+  app.get('/api/memory/projects', async () => ({
+    success: true,
+    data: ctx.memory!.projectStats(),
+  }))
+
+  app.get('/api/memory/notes', async (req, reply) => {
+    const parsed = z
+      .object({
+        project: z.string().min(1).max(100),
+        limit: z.coerce.number().int().min(1).max(50).default(10),
+      })
+      .safeParse(req.query)
+    if (!parsed.success) {
+      return reply.code(400).send({ success: false, error: 'invalid query' })
+    }
+    return {
+      success: true,
+      data: ctx.memory!.recentNotes(parsed.data.project, parsed.data.limit),
+    }
+  })
 }
