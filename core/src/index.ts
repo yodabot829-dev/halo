@@ -10,7 +10,7 @@ import { CodexExecutor } from './executor/codex.js'
 import type { Executor } from './executor/types.js'
 import { GoalEngine } from './goals/engine.js'
 import { GoalStore } from './goals/goal-file.js'
-import { makeLlmJudge } from './goals/judge.js'
+import { makeLlmJudge, makePanelJudge } from './goals/judge.js'
 import { makeOllamaEmbedder } from './memory/embed.js'
 import { MemoryService } from './memory/service.js'
 import { MemoryStore } from './memory/store.js'
@@ -49,7 +49,10 @@ const goalEngine = new GoalEngine({
   store: goalStore,
   executors,
   projects: config.projects,
-  judge: makeLlmJudge(registry, config, meter),
+  judge:
+    config.goals.judge === 'panel'
+      ? makePanelJudge(registry, config, meter)
+      : makeLlmJudge(registry, config, meter),
   maxIterations: config.goals.maxIterations,
   stepTimeoutMs: config.goals.stepTimeoutMinutes * 60_000,
 })

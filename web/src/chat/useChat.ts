@@ -28,7 +28,7 @@ export function useChat() {
   }, [])
 
   const send = useCallback(
-    async (text: string, modelOverride?: string) => {
+    async (text: string, modelOverride?: string, project?: string) => {
       if (streamingRef.current) return
       streamingRef.current = true
       abortRef.current = new AbortController()
@@ -46,6 +46,7 @@ export function useChat() {
           body: JSON.stringify({
             messages: history.map(({ role, content }) => ({ role, content })),
             model: modelOverride || undefined,
+            project: project || undefined,
           }),
         })
         if (!res.ok || !res.body) {
@@ -60,6 +61,9 @@ export function useChat() {
           } else if (event === 'delta' && typeof data['text'] === 'string') {
             acc += data['text']
             patchLast({ content: acc })
+          } else if (event === 'done') {
+            const usage = data['usage'] as { inputTokens: number; outputTokens: number } | undefined
+            if (usage) patchLast({ usage })
           } else if (event === 'error') {
             throw new Error(
               typeof data['message'] === 'string' ? data['message'] : 'stream error',

@@ -19,6 +19,7 @@ export interface UiMessage {
   role: 'user' | 'assistant'
   content: string
   meta?: MessageMeta
+  usage?: { inputTokens: number; outputTokens: number }
 }
 
 function authHeaders(): Record<string, string> {

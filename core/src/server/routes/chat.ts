@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { TASK_CLASSES } from '../../config/schema.js'
 import { buildSystemPrompt } from '../../memory/context.js'
+import { buildProjectContext } from '../../memory/project-context.js'
 import { providerCallOptions } from '../../providers/options.js'
 import { budgetStatus, exhaustedProviders } from '../../router/budget.js'
 import { classify, type ChatMessage } from '../../router/classify.js'
@@ -23,6 +24,7 @@ const chatBodySchema = z.object({
     .max(200),
   model: z.string().max(200).optional(),
   taskClass: z.enum(TASK_CLASSES).optional(),
+  project: z.string().max(100).optional(),
 })
 
 function sse(reply: FastifyReply, event: string, data: unknown): void {
@@ -50,7 +52,7 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
       app.log.warn({ issues: parsed.error.issues }, 'invalid chat body')
       return reply.code(400).send({ success: false, error: 'invalid request body' })
     }
-    const { messages, model: overrideRef, taskClass: forcedClass } = parsed.data
+    const { messages, model: overrideRef, taskClass: forcedClass, project } = parsed.data
 
     const taskClass = forcedClass ?? classify(messages as ChatMessage[])
     const exhausted = exhaustedProviders(budgetStatus(ctx.config, ctx.meter, new Date()))
@@ -81,7 +83,11 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
         }
       }
     }
-    const system = buildSystemPrompt(ctx.persona ?? null, memoryNotes)
+    let system = buildSystemPrompt(ctx.persona ?? null, memoryNotes)
+    if (project && project in ctx.config.projects) {
+      const scoped = buildProjectContext(project, ctx.config.projects[project], ctx.memory)
+      if (scoped) system = system ? `${system}\n\n${scoped}` : scoped
+    }
 
     sse(reply, 'meta', {
       model: selection.entry.ref,

@@ -104,6 +104,7 @@ goals:
   dir: OS/Goals
   maxIterations: 3
   stepTimeoutMinutes: 30
+  judge: single # 'panel' = 3 review lenses must unanimously approve (~3x cost)
 
 # One-click actions — buttons in the Actions tab; add `schedule:` (cron) to
 # make one a routine. loop: true injects past run logs so runs self-improve.
@@ -112,6 +113,7 @@ actions:
     label: Audit sessions → propose skills
     project: halo
     loop: true
+    schedule: "0 3 * * *" # "dreaming": mine sessions for new skills at 03:00 nightly
     prompt: >
       Open the claude-mem database at ~/.claude-mem/claude-mem.db READ-ONLY
       (sqlite3). Analyse the most recent 150 rows of session_summaries

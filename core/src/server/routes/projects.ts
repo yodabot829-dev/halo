@@ -32,6 +32,11 @@ export function registerProjectRoutes(app: FastifyInstance, ctx: AppContext): vo
     return { success: true, data: cache.data }
   })
 
+  app.get('/api/projects/names', async () => ({
+    success: true,
+    data: Object.keys(ctx.config.projects),
+  }))
+
   app.post('/api/projects/:name/graph', async (req, reply) => {
     const { name } = req.params as { name: string }
     if (!ctx.actions || !(name in ctx.config.projects)) {

@@ -8,7 +8,9 @@ export function Chat() {
   const { messages, streaming, error, send, stop } = useChat()
   const { micState, voiceError, startRecording, stopRecording, speak } = useVoice()
   const [models, setModels] = useState<ModelEntry[]>([])
+  const [projects, setProjects] = useState<string[]>([])
   const [override, setOverride] = useState('')
+  const [scope, setScope] = useState('')
   const [draft, setDraft] = useState('')
   const [speakReplies, setSpeakReplies] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -16,6 +18,10 @@ export function Chat() {
 
   useEffect(() => {
     fetchModels().then(setModels).catch(console.error)
+    fetch('/api/projects/names')
+      .then((r) => r.json())
+      .then((b: { data: string[] }) => setProjects(b.data))
+      .catch(console.error)
   }, [])
 
   useEffect(() => {
@@ -37,7 +43,7 @@ export function Chat() {
     const trimmed = text.trim()
     if (!trimmed || streaming) return
     setDraft('')
-    void send(trimmed, override || undefined)
+    void send(trimmed, override || undefined, scope || undefined)
   }
 
   const toggleMic = async () => {
@@ -67,6 +73,7 @@ export function Chat() {
             {m.meta && (
               <span className="chip" title={m.meta.reason}>
                 <b>{m.meta.label}</b> {m.meta.taskClass}
+                {m.usage ? ` · ${m.usage.inputTokens + m.usage.outputTokens} tok` : ''}
               </span>
             )}
             <div className="bubble">{m.content || (streaming ? '…' : '')}</div>
@@ -86,6 +93,18 @@ export function Chat() {
                 {m.label}
               </option>
             ))}
+        </select>
+        <select
+          value={scope}
+          onChange={(e) => setScope(e.target.value)}
+          title="Scope the conversation to a project's memory + STATE"
+        >
+          <option value="">All</option>
+          {projects.map((p) => (
+            <option key={p} value={p}>
+              @{p}
+            </option>
+          ))}
         </select>
         <textarea
           value={draft}
