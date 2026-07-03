@@ -6,15 +6,17 @@ import { Memory } from './memory/Memory'
 import { Ops } from './ops/Ops'
 import { ProjectDetail } from './projects/ProjectDetail'
 import { Projects } from './projects/Projects'
+import { Terminal } from './terminal/Terminal'
 
-const VIEWS = ['Chat', 'Board', 'Projects', 'Goals', 'Memory', 'Ops'] as const
+const VIEWS = ['Chat', 'Board', 'Projects', 'Terminal', 'Goals', 'Memory', 'Ops'] as const
 type View = (typeof VIEWS)[number]
 
 export function App() {
   const [view, setView] = useState<View>('Chat')
   const [project, setProject] = useState<string | null>(null)
-  // Chat scope is lifted here so opening a project's chat can pre-set it.
+  // Chat/terminal scopes are lifted here so a project page can pre-set them.
   const [chatScope, setChatScope] = useState('')
+  const [terminalScope, setTerminalScope] = useState('')
 
   const open = (v: View) => {
     setProject(null)
@@ -25,6 +27,12 @@ export function App() {
     setChatScope(name)
     setProject(null)
     setView('Chat')
+  }
+
+  const openTerminal = (name: string) => {
+    setTerminalScope(name)
+    setProject(null)
+    setView('Terminal')
   }
 
   return (
@@ -49,6 +57,7 @@ export function App() {
           name={project}
           onBack={() => setProject(null)}
           onChat={chatAboutProject}
+          onTerminal={openTerminal}
         />
       ) : view === 'Chat' ? (
         <Chat scope={chatScope} onScopeChange={setChatScope} />
@@ -56,6 +65,8 @@ export function App() {
         <Board />
       ) : view === 'Projects' ? (
         <Projects onOpen={setProject} />
+      ) : view === 'Terminal' ? (
+        <Terminal scope={terminalScope} onScopeChange={setTerminalScope} />
       ) : view === 'Goals' ? (
         <Goals />
       ) : view === 'Memory' ? (
