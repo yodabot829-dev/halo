@@ -1,6 +1,13 @@
 import { z } from 'zod'
 
-export const PROVIDER_KINDS = ['anthropic', 'openai', 'google', 'openrouter', 'ollama'] as const
+export const PROVIDER_KINDS = [
+  'anthropic',
+  'openai',
+  'google',
+  'openrouter',
+  'ollama',
+  'claude-code', // chat bridge to the Claude Max subscription via `claude -p`
+] as const
 export const TASK_CLASSES = ['chat', 'summarise', 'code', 'reason', 'vision'] as const
 export const TIERS = ['free', 'quota', 'subscription', 'premium'] as const
 
@@ -17,6 +24,9 @@ export const providerSchema = z.object({
   apiKeyEnv: z.string().min(1).optional(),
   // Ollama only: cap the KV-cache context; the daemon default (131k) stalls 16GB machines.
   numCtx: z.number().int().min(512).optional(),
+  // claude-code only: CLI binary + neutral working dir for unscoped chat.
+  command: z.string().optional(),
+  timeoutMs: z.number().int().min(1000).optional(),
 })
 
 export const modelSchema = z.object({

@@ -41,8 +41,18 @@ providers:
     kind: ollama
     baseURL: http://127.0.0.1:11434/api
     numCtx: 8192 # 131k default KV cache stalls this 16GB machine
+  claude-code:
+    kind: claude-code # chat bridge to the Claude Max subscription (flat cost)
+    command: claude
+    timeoutMs: 150000
 
 models:
+  # PRIMARY: chat runs on the Claude Max subscription via the CLI bridge
+  # (flat cost). Synthetic (quota tier) is the automatic secondary/fallback.
+  - ref: claude-code/claude
+    label: Claude (Max via Code)
+    classes: [chat, code, reason]
+    tier: subscription
   - ref: anthropic/claude-sonnet-5
     label: Claude Sonnet 5
     classes: [chat, code, reason, vision]
@@ -186,9 +196,11 @@ budgets:
   # openrouter: { monthlyTokens: 2000000 }
 
 routing:
+  # Claude Code (Max sub, subscription tier) is PRIMARY; Synthetic (quota) is
+  # the secondary fallback; local (free) for cheap summaries; premium API last.
   classOrder:
-    chat: [quota, free, premium]
-    summarise: [free, quota]
-    code: [quota, premium] # burn Synthetic quota before premium credits
-    reason: [premium, quota]
-    vision: [quota, premium]
+    chat: [subscription, quota, free, premium]
+    summarise: [free, subscription, quota] # cheap local first for bulk summaries
+    code: [subscription, quota, premium]
+    reason: [subscription, quota, premium]
+    vision: [quota, premium] # bridge chat is text-only; vision needs an API model

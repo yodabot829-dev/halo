@@ -4,6 +4,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import type { LanguageModel } from 'ai'
 import { createOllama } from 'ollama-ai-provider-v2'
+import { binaryExists } from '../executor/which.js'
 import {
   parseModelRef,
   type HaloConfig,
@@ -42,6 +43,11 @@ function makeFactory(p: ProviderConfig, apiKey: string | undefined): ModelFactor
       return (id) => createOpenRouter({ apiKey, baseURL: p.baseURL }).chat(id)
     case 'ollama':
       return (id) => createOllama({ baseURL: p.baseURL })(id)
+    case 'claude-code':
+      // Not an API model — the chat route dispatches these via the CLI bridge.
+      return () => {
+        throw new Error('claude-code is a chat bridge, not an API model — resolve() must not be called')
+      }
   }
 }
 
@@ -60,7 +66,10 @@ export class ModelRegistry implements ModelSource {
 
     for (const [name, provider] of Object.entries(config.providers)) {
       const apiKey = provider.apiKeyEnv ? env[provider.apiKeyEnv] : undefined
-      const available = provider.kind === 'ollama' || Boolean(apiKey)
+      let available: boolean
+      if (provider.kind === 'ollama') available = true
+      else if (provider.kind === 'claude-code') available = binaryExists(provider.command ?? 'claude')
+      else available = Boolean(apiKey)
       availability.set(name, available)
       this.factories.set(name, makeFactory(provider, apiKey))
     }

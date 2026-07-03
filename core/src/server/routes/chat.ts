@@ -1,9 +1,11 @@
 import { streamText } from 'ai'
 import type { FastifyInstance, FastifyReply } from 'fastify'
+import { tmpdir } from 'node:os'
 import { z } from 'zod'
 import { TASK_CLASSES } from '../../config/schema.js'
 import { buildSystemPrompt } from '../../memory/context.js'
 import { buildProjectContext } from '../../memory/project-context.js'
+import { streamClaudeCodeChat } from '../../providers/claude-code-chat.js'
 import { providerCallOptions } from '../../providers/options.js'
 import { budgetStatus, exhaustedProviders } from '../../router/budget.js'
 import { classify, type ChatMessage } from '../../router/classify.js'
@@ -104,42 +106,96 @@ export function registerChatRoute(app: FastifyInstance, ctx: AppContext): void {
       if (!reply.raw.writableEnded) abort.abort()
     })
 
-    const providerOptions = providerCallOptions(ctx.config, selection.entry.provider)
     let streamedChars = 0
+    const promptChars = () => (system?.length ?? 0) + JSON.stringify(messages).length
 
-    try {
+    const onDelta = (text: string) => {
+      streamedChars += text.length
+      sse(reply, 'delta', { text })
+    }
+
+    const streamApi = async (entry: typeof selection.entry) => {
       const result = streamText({
-        model: ctx.registry.resolve(selection.entry.ref),
+        model: ctx.registry.resolve(entry.ref),
         system,
         messages,
         abortSignal: abort.signal,
-        providerOptions,
+        providerOptions: providerCallOptions(ctx.config, entry.provider),
         maxOutputTokens: ctx.config.server.maxOutputTokens,
       })
-      for await (const text of result.textStream) {
-        streamedChars += text.length
-        sse(reply, 'delta', { text })
-      }
+      for await (const text of result.textStream) onDelta(text)
       const usage = await result.usage
-      // Some providers (Synthetic's Anthropic-compatible stream) omit input
-      // tokens from streaming usage — estimate from the prompt so budget
-      // burn-down isn't undercounted. Output falls back to streamed chars.
-      const promptChars = (system?.length ?? 0) + JSON.stringify(messages).length
-      const inputTokens = usage.inputTokens || estimateTokens(promptChars)
-      const outputTokens = usage.outputTokens || estimateTokens(streamedChars)
+      return {
+        inputTokens: usage.inputTokens || estimateTokens(promptChars()),
+        outputTokens: usage.outputTokens || estimateTokens(streamedChars),
+      }
+    }
+
+    const streamBridge = async (entry: typeof selection.entry) => {
+      const cfg = ctx.config.providers[entry.provider]!
+      // Scoped chat runs in that project's repo (Claude Code gets real context);
+      // unscoped runs in a neutral tmp dir so it doesn't pick up a random repo.
+      const cwd = (project && ctx.config.projects[project]) || tmpdir()
+      const usage = await streamClaudeCodeChat(
+        { command: cfg.command ?? 'claude', cwd, timeoutMs: cfg.timeoutMs ?? 120_000 },
+        messages,
+        system,
+        abort.signal,
+        onDelta,
+      )
+      return {
+        inputTokens: usage.inputTokens || estimateTokens(promptChars()),
+        outputTokens: usage.outputTokens || estimateTokens(streamedChars),
+      }
+    }
+
+    const isBridge = ctx.config.providers[selection.entry.provider]?.kind === 'claude-code'
+    const finishOk = (entry: typeof selection.entry, u: { inputTokens: number; outputTokens: number }) => {
       safeRecord(app, ctx, {
-        provider: selection.entry.provider,
-        model: selection.entry.modelId,
+        provider: entry.provider,
+        model: entry.modelId,
         taskClass,
-        inputTokens,
-        outputTokens,
+        inputTokens: u.inputTokens,
+        outputTokens: u.outputTokens,
         ok: true,
       })
-      sse(reply, 'done', { usage: { inputTokens, outputTokens } })
+      sse(reply, 'done', { usage: u })
+    }
+
+    try {
+      const usage = isBridge ? await streamBridge(selection.entry) : await streamApi(selection.entry)
+      finishOk(selection.entry, usage)
     } catch (err) {
-      // Providers return no usage for aborted streams; estimate from what
-      // actually streamed (~4 chars/token) so budget burn-down isn't
-      // undercounted by cancellations.
+      // Primary was the Max subscription and it failed before streaming a
+      // single token (e.g. 5h session limit) → fall back to the secondary
+      // (Synthetic), the whole point of "Claude Code primary, Synthetic second".
+      if (isBridge && streamedChars === 0) {
+        try {
+          const claudeCodeProviders = Object.entries(ctx.config.providers)
+            .filter(([, p]) => p.kind === 'claude-code')
+            .map(([n]) => n)
+          const fallback = selectModel(
+            taskClass,
+            ctx.registry.list(),
+            ctx.config,
+            undefined,
+            new Set([...exhausted, ...claudeCodeProviders]),
+          )
+          app.log.warn({ err }, 'claude-code chat unavailable — falling back to secondary')
+          sse(reply, 'meta', {
+            model: fallback.entry.ref,
+            label: fallback.entry.label,
+            taskClass,
+            reason: `claude-code unavailable → ${fallback.reason}`,
+            memoryCount: memoryNotes.length,
+            fallback: true,
+          })
+          finishOk(fallback.entry, await streamApi(fallback.entry))
+          return
+        } catch (fallbackErr) {
+          app.log.error(fallbackErr, 'fallback after claude-code also failed')
+        }
+      }
       const aborted = abort.signal.aborted
       safeRecord(app, ctx, {
         provider: selection.entry.provider,
