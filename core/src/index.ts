@@ -123,4 +123,12 @@ app.log.info(
   `HALO online — ${available.length}/${registry.list().length} models available`,
 )
 
+// Close the app on termination so onClose hooks fire (kills terminal PTYs and
+// the TTS worker instead of orphaning them across restarts).
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.once(signal, () => {
+    void app.close().then(() => process.exit(0))
+  })
+}
+
 await app.listen({ port: config.server.port, host: config.server.bind })

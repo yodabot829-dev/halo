@@ -53,6 +53,9 @@ export function useTerminalSocket(project: string, container: HTMLElement | null
       } else if (frame['type'] === 'exit') {
         setStatus('exited')
         term.write(`\r\n[shell exited: ${String(frame['code'])}]\r\n`)
+      } else if (frame['type'] === 'error') {
+        setStatus('closed')
+        term.write(`\r\n[error: ${String(frame['message'])}]\r\n`)
       }
     }
     socket.onclose = () => setStatus((s) => (s === 'exited' ? s : 'closed'))

@@ -57,6 +57,28 @@ describe('TerminalManager', () => {
     expect(() => manager.attach('evil')).toThrow(/unknown project/)
   })
 
+  it('rejects prototype-chain names (constructor, __proto__)', () => {
+    const { manager, spawn } = makeManager()
+    expect(() => manager.attach('constructor')).toThrow(/unknown project/)
+    expect(() => manager.attach('__proto__')).toThrow(/unknown project/)
+    expect(() => manager.attach('hasOwnProperty')).toThrow(/unknown project/)
+    expect(spawn).not.toHaveBeenCalled()
+  })
+
+  it('a stale PTY exit does not evict a freshly respawned session', () => {
+    // kill() removes the map entry; the real OS exit event arrives later. If a
+    // re-attach spawns a new PTY in that window, the old exit must not delete it.
+    const { manager, ptys } = makeManager()
+    manager.attach('halo') // ptys[0]
+    manager.kill('halo')
+    manager.attach('halo') // ptys[1], fresh session
+    ptys[0]?.emitExit(0) // stale exit from the killed PTY
+    expect(manager.list()).toEqual(['halo'])
+    manager.write('halo', 'x')
+    expect(ptys[1]?.writes).toEqual(['x'])
+    expect(ptys[0]?.writes).toEqual([])
+  })
+
   it('spawns the configured shell rooted in the project dir', () => {
     const { manager, spawn } = makeManager()
     manager.attach('halo')
