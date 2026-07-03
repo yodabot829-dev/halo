@@ -13,10 +13,18 @@ type View = (typeof VIEWS)[number]
 export function App() {
   const [view, setView] = useState<View>('Chat')
   const [project, setProject] = useState<string | null>(null)
+  // Chat scope is lifted here so opening a project's chat can pre-set it.
+  const [chatScope, setChatScope] = useState('')
 
   const open = (v: View) => {
     setProject(null)
     setView(v)
+  }
+
+  const chatAboutProject = (name: string) => {
+    setChatScope(name)
+    setProject(null)
+    setView('Chat')
   }
 
   return (
@@ -37,9 +45,13 @@ export function App() {
         <span className="sub">Cortana · multi-model</span>
       </header>
       {project ? (
-        <ProjectDetail name={project} onBack={() => setProject(null)} />
+        <ProjectDetail
+          name={project}
+          onBack={() => setProject(null)}
+          onChat={chatAboutProject}
+        />
       ) : view === 'Chat' ? (
-        <Chat />
+        <Chat scope={chatScope} onScopeChange={setChatScope} />
       ) : view === 'Board' ? (
         <Board />
       ) : view === 'Projects' ? (

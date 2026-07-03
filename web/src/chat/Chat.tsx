@@ -4,13 +4,21 @@ import { fetchModels } from '../api'
 import { useChat } from './useChat'
 import { useVoice } from './useVoice'
 
-export function Chat() {
+interface ChatProps {
+  /** Controlled project scope (from App), so a project page can pre-set it. */
+  scope?: string
+  onScopeChange?: (scope: string) => void
+}
+
+export function Chat({ scope: scopeProp, onScopeChange }: ChatProps = {}) {
   const { messages, streaming, error, send, stop } = useChat()
   const { micState, voiceError, startRecording, stopRecording, speak } = useVoice()
   const [models, setModels] = useState<ModelEntry[]>([])
   const [projects, setProjects] = useState<string[]>([])
   const [override, setOverride] = useState('')
-  const [scope, setScope] = useState('')
+  const [scopeState, setScopeState] = useState('')
+  const scope = scopeProp ?? scopeState
+  const setScope = onScopeChange ?? setScopeState
   const [draft, setDraft] = useState('')
   const [speakReplies, setSpeakReplies] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -62,9 +70,19 @@ export function Chat() {
           <div className="empty">
             <div className="halo-ring" />
             <p>
-              HALO online.
-              <br />
-              Type, or hold the mic and talk.
+              {scope ? (
+                <>
+                  Chatting about <b>@{scope}</b>.
+                  <br />
+                  Its memory and STATE are in context — ask anything.
+                </>
+              ) : (
+                <>
+                  HALO online.
+                  <br />
+                  Type, or hold the mic and talk.
+                </>
+              )}
             </p>
           </div>
         )}

@@ -21,7 +21,15 @@ interface NoteRow {
   mtime: number
 }
 
-export function ProjectDetail({ name, onBack }: { name: string; onBack: () => void }) {
+export function ProjectDetail({
+  name,
+  onBack,
+  onChat,
+}: {
+  name: string
+  onBack: () => void
+  onChat?: (name: string) => void
+}) {
   const { overview } = useMemoryStats()
   const [info, setInfo] = useState<ProjectInfo | null>(null)
   const [goals, setGoals] = useState<GoalSummary[]>([])
@@ -48,9 +56,16 @@ export function ProjectDetail({ name, onBack }: { name: string; onBack: () => vo
 
   return (
     <div className="detail">
-      <button className="ghost" onClick={onBack}>
-        ← Projects
-      </button>
+      <div className="detail-topbar">
+        <button className="ghost" onClick={onBack}>
+          ← Projects
+        </button>
+        {onChat && (
+          <button className="primary" onClick={() => onChat(name)}>
+            💬 Chat about this project
+          </button>
+        )}
+      </div>
       <div className="detail-head">
         <h1>{name}</h1>
         {info?.lastCommitAt && (
