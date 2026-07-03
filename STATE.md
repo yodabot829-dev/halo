@@ -38,7 +38,12 @@ Multi-LLM routing, vault memory, goals/actions with approval, voice, all local.
   shutdown. 140 tests green, typecheck + web build clean, live-smoke-tested against a
   real zsh. Passed code + security review (5 findings fixed, incl. 1 CRITICAL CSWSH).
   Spec: `docs/superpowers/specs/2026-07-03-terminal-per-project-design.md`.
-  **Not yet merged to main** — review branch.
+  **Voice (added same day):** 🎙 push-to-talk dictation (transcript typed at the
+  prompt, no auto-Enter — you review + run) via whisper STT; 🔊 auto-read that
+  speaks command output once it settles, in a British "Jarvis" voice (`bm_george`)
+  distinct from Chat's Cortana. Per-call TTS voice override added to
+  `/api/voice/tts` (validated). Off by default; toggle per session.
+  **Not yet merged to main** — review branch (8 commits ahead).
 
 ## Next / open
 
