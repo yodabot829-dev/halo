@@ -1067,6 +1067,13 @@ button.primary:hover {
 .term-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
+}
+
+/* Nudge toward Claude Code's native /voice dictation (bar is always dark). */
+.term-hint {
+  color: #8b93a3;
+  font-size: 12px;
 }
 
 /* The bar is always dark, so its buttons need fixed light-on-dark colors —
