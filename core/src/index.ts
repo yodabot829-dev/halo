@@ -17,6 +17,7 @@ import { MemoryStore } from './memory/store.js'
 import { Meter } from './meter/meter.js'
 import { ModelRegistry } from './providers/registry.js'
 import { buildApp } from './server/app.js'
+import { TerminalManager } from './terminal/manager.js'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 
@@ -64,6 +65,16 @@ const goalEngine = new GoalEngine({
   stepTimeoutMs: config.goals.stepTimeoutMinutes * 60_000,
 })
 
+// node-pty is a native module (rebuild caveat, like better-sqlite3); loaded
+// lazily here so tests and tooling that import app.ts never touch it.
+const { spawn: ptySpawn } = await import('node-pty')
+const terminalManager = new TerminalManager({
+  projects: config.projects,
+  shell: config.terminal.shell,
+  scrollbackBytes: config.terminal.scrollbackBytes,
+  spawn: (shell, opts) => ptySpawn(shell, ['-l'], { name: 'xterm-256color', ...opts }),
+})
+
 const runLog = new RunLog(resolve(config.vault.path, config.runsDir))
 const actionRunner = new ActionRunner({
   actions: config.actions,
@@ -85,6 +96,7 @@ const app = await buildApp({
   persona,
   goals: { store: goalStore, engine: goalEngine },
   actions: { runner: actionRunner, runLog, scheduler },
+  terminal: { manager: terminalManager },
   authToken: process.env['HALO_TOKEN'],
   webDist: resolve(here, '../../web/dist'),
 })
