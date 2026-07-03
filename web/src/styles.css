@@ -1039,6 +1039,20 @@ button.primary:hover {
   gap: 8px;
 }
 
+/* The bar is always dark, so its buttons need fixed light-on-dark colors —
+   the theme-driven .ghost (near-black text in light mode) is invisible here. */
+.term-bar button.ghost {
+  color: #d7dce5;
+  border-color: #333b4a;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 5px 12px;
+}
+.term-bar button.ghost:hover {
+  color: #ffffff;
+  border-color: #4a5568;
+  background: rgba(255, 255, 255, 0.09);
+}
+
 .term-status { color: var(--muted); }
 .term-status.term-live { color: #2e9e5b; }
 .term-status.term-closed, .term-status.term-exited { color: #d43c3c; }
