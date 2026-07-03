@@ -523,16 +523,20 @@ the menu.
 13. **Per-note provenance & confidence** surfaced in search and the constellation.
 
 ### D. Work & autonomy
-14. **★ Terminal window per project (requested).** An interactive shell inside HALO,
-    one per registered project. Backend: a PTY (`node-pty`) rooted in the project dir,
-    streamed over a WebSocket. Frontend: an `xterm.js` terminal in a new **Terminal**
-    tab (project picker / panes) or embedded in each project detail page. Lets you run
-    tests, git, or drive an interactive `claude` session live in the repo — and, over
-    Tailscale later, from your phone. Aligns with the "four parallel terminals" idea,
-    done as panes in the OS. **Cautions:** a browser-exposed shell is the single most
-    dangerous surface — must be bearer-token-gated and confined to registered project
-    dirs, never exposed beyond Tailscale; `node-pty` is a native module (rebuild like
-    better-sqlite3). Variant to decide: raw shell vs. scoped interactive Claude Code session.
+14. **✅ Terminal window per project (BUILT — 2026-07-03).** An interactive shell inside
+    HALO, one PTY (`node-pty`) per registered project rooted in its dir, streamed over
+    a WebSocket to an `xterm.js` **Terminal** view (project-chip picker) + a 🖥 Terminal
+    button on each project page. Sessions persist across disconnects with ring-buffer
+    replay (tmux-lite). Decided: **raw shell** (`terminal.shell`, default `$SHELL`) —
+    a scoped Claude session is a keystroke away inside it and no safer, since Claude Code
+    runs arbitrary shell anyway. Security: **Origin check** on the WS upgrade (WebSocket
+    bypasses same-origin policy — this closes a real drive-by-RCE vector), in-band bearer
+    auth before project disclosure, `Object.hasOwn` allowlist, `maxPayload` + zod caps,
+    PTYs killed on shutdown. Files: `core/src/terminal/manager.ts`,
+    `core/src/server/routes/terminal.ts`, `web/src/terminal/`. Spec + full rationale:
+    `docs/superpowers/specs/2026-07-03-terminal-per-project-design.md`. `node-pty` is a
+    native module (rebuild like better-sqlite3; prebuild's `spawn-helper` needs +x).
+    Deferred: per-tab Claude-mode toggle, panes/splits, concurrent-socket cap.
 15. **API-executor** — an agentic worker that does tool-use work via the Synthetic/API
     (not just CLIs), so Synthetic can be a real executor fallback, not only a chat fallback.
 16. **Goal DAGs** — goals that spawn sub-goals and hand off, with the Board showing the tree.
