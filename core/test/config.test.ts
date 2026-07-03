@@ -53,19 +53,22 @@ models: []
 })
 
 describe('terminal config', () => {
-  it('defaults the terminal section when absent', () => {
+  it('defaults the terminal section to a Claude session', () => {
     const config = parseConfig(VALID)
     expect(config.terminal.scrollbackBytes).toBe(200_000)
-    expect(config.terminal.shell.length).toBeGreaterThan(0)
+    expect(config.terminal.command).toBe('claude')
+    expect(config.terminal.args).toEqual([])
   })
 
   it('accepts explicit terminal settings', () => {
     const config = parseConfig(`${VALID}
 terminal:
-  shell: /bin/bash
+  command: /bin/bash
+  args: [-l]
   scrollbackBytes: 50000
 `)
-    expect(config.terminal.shell).toBe('/bin/bash')
+    expect(config.terminal.command).toBe('/bin/bash')
+    expect(config.terminal.args).toEqual(['-l'])
     expect(config.terminal.scrollbackBytes).toBe(50_000)
   })
 })

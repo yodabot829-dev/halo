@@ -50,7 +50,7 @@ async function makeApp(
   const ptys: ReturnType<typeof makeFakePty>[] = []
   const manager = new TerminalManager({
     projects: config.projects,
-    shell: '/bin/zsh',
+    command: '/bin/zsh',
     scrollbackBytes: 10_000,
     spawn: () => {
       if (opts.spawnThrows) throw new Error('spawn boom')

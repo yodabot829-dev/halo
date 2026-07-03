@@ -44,7 +44,7 @@ function makeManager(opts: { scrollbackBytes?: number } = {}) {
   })
   const manager = new TerminalManager({
     projects: { halo: '/tmp/halo', aiprojects: '/tmp/aiprojects' },
-    shell: '/bin/zsh',
+    command: '/bin/zsh',
     scrollbackBytes: opts.scrollbackBytes ?? 1000,
     spawn,
   })
@@ -79,7 +79,7 @@ describe('TerminalManager', () => {
     expect(ptys[0]?.writes).toEqual([])
   })
 
-  it('spawns the configured shell rooted in the project dir', () => {
+  it('spawns the configured command rooted in the project dir', () => {
     const { manager, spawn } = makeManager()
     manager.attach('halo')
     expect(spawn).toHaveBeenCalledWith(

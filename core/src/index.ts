@@ -70,9 +70,10 @@ const goalEngine = new GoalEngine({
 const { spawn: ptySpawn } = await import('node-pty')
 const terminalManager = new TerminalManager({
   projects: config.projects,
-  shell: config.terminal.shell,
+  command: config.terminal.command,
   scrollbackBytes: config.terminal.scrollbackBytes,
-  spawn: (shell, opts) => ptySpawn(shell, ['-l'], { name: 'xterm-256color', ...opts }),
+  spawn: (command, opts) =>
+    ptySpawn(command, config.terminal.args, { name: 'xterm-256color', ...opts }),
 })
 
 const runLog = new RunLog(resolve(config.vault.path, config.runsDir))

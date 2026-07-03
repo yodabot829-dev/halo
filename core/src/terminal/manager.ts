@@ -34,7 +34,8 @@ export interface TerminalSession {
 export interface TerminalManagerOptions {
   /** Registered project name → absolute directory. The allowlist. */
   projects: Record<string, string>
-  shell: string
+  /** Executable each PTY runs (e.g. "claude" or "/bin/zsh"). */
+  command: string
   scrollbackBytes: number
   spawn: PtySpawn
 }
@@ -96,7 +97,7 @@ export class TerminalManager {
   }
 
   private spawn(name: string, cwd: string): LiveSession {
-    const pty = this.opts.spawn(this.opts.shell, {
+    const pty = this.opts.spawn(this.opts.command, {
       cwd,
       cols: 80,
       rows: 24,

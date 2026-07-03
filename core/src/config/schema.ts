@@ -135,11 +135,15 @@ export const configSchema = z.object({
     )
     .default([]),
   runsDir: z.string().default('OS/Runs'),
-  // Terminal-per-project: the shell each project PTY runs, and how much
-  // output is kept server-side for replay on (re)attach.
+  // Terminal-per-project: what each project PTY runs (rooted in the project
+  // dir, which is its context) and how much output is kept for replay.
+  // Defaults to an interactive Claude Code session — set command:/bin/zsh
+  // args:[-l] for a plain shell, or args:[--continue] to resume the project's
+  // last Claude conversation.
   terminal: z
     .object({
-      shell: z.string().min(1).default(process.env['SHELL'] ?? '/bin/zsh'),
+      command: z.string().min(1).default('claude'),
+      args: z.array(z.string()).default([]),
       scrollbackBytes: z.number().int().min(1000).max(5_000_000).default(200_000),
     })
     .prefault({}),
