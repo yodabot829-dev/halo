@@ -1,68 +1,70 @@
 # HALO — State
 
-Updated: 2026-07-02 (evening)
+Updated: 2026-07-03
 
-## Latest (video-feature round — 4 items, all shipped)
+**Full reference:** `docs/ARCHITECTURE.md` (every component, wiring, diagrams, API,
+config, limitations, 26-item backlog). Read that first on any fresh session.
 
-- **Approval layer + Work board** — actions with `approval: true` draft first and
-  park as `awaiting_approval`; Board tab has Approve/Reject (reject feedback feeds
-  next draft), running strip, routines with next-fire, activity feed. vault-cleanup
-  example (merge/re-file only). Nate B Jones's "draft never sends itself".
-- **Graphify integration** — per-project "Build/Update graph" + blast-radius/
-  architecture Q&A on project pages (`/api/projects/:name/graph|ask`, runAdhoc).
-- **Project-scoped chat** — `@project` picker injects that project's STATE + memory.
-- **Small wins** — token cost chip on chat replies; `goals.judge: panel` (3-lens
-  unanimous); skill-audit "dreaming" cron at 03:00 nightly.
-- **Executor note:** default reverted to claude-code. Codex fallback is BLOCKED —
-  codex CLI rejects every model on the current ChatGPT plan ("not supported with a
-  ChatGPT account"); needs plan change or re-login before it can cover Claude's 5h limit.
+## What HALO is
 
-## Earlier today
+Personal agentic OS: one Node/TS daemon (Fastify `:4720`) + React web app it serves.
+Multi-LLM routing, vault memory, goals/actions with approval, voice, all local.
+~5,600 LOC, 104 core tests, ~24 commits. Persona: Cortana. Binds localhost today.
 
-- **Slice 8 (Chase AI video-inspired)** — Actions command center: one-click
-  buttons dispatch headless executor runs, optional cron routines, run logs in
-  vault `OS/Runs/` with past-run injection (self-improving loops). Default
-  actions: skill-audit, vault-index, morning-brief. Memory constellation
-  canvas graphic. skill-audit live-verified: mined claude-mem, wrote 12
-  proposals to `OS/Reports/skill-audit-2026-07-02.md`.
-- **In-process TTS** — Kokoro ONNX worker (spawn on demand, unload after 10min
-  idle, `say` fallback). voicemode kokoro service no longer needed by HALO.
-- gemma3:4b now free-tier default (12b evicted voice services); cancelled
-  streams meter estimated tokens.
+## Done (this build, in order)
 
-## Done
+- **Slices 1–8** (see git log / ARCHITECTURE.md §6): daemon + provider registry,
+  vault memory (13k+ notes, FTS5 + Ollama embeddings), budget router, executor +
+  goal engine, local voice, project visualisations, Actions command center.
+- **Video-feature round** (Chase AI + Nate B Jones + others): approval layer + Work
+  **Board**, graphify integration, project-scoped chat, cost chip, panel judge,
+  nightly "dreaming" skill-audit cron.
+- **In-process TTS**: Kokoro ONNX worker, spawns on demand, unloads after idle,
+  macOS `say` fallback. 0 MB idle.
+- **Synthetic + GLM-5.2 wired** via gitignored `.env` (loader added; `infisical run`
+  overrides). Note: Synthetic serves GLM-5.2 at **512K** (not 1M) and text-only.
+- **Claude Code chat bridge**: chat PRIMARY = Claude Max sub via `claude -p`;
+  Synthetic quota = automatic secondary/fallback. Both paths live-verified.
+- **Full architecture doc** (`docs/ARCHITECTURE.md`, 567 lines, 6 Mermaid diagrams,
+  fact-checked against code).
+- **Wide-screen layout**: app fills large displays; chat stays a centered column.
+- **Click a project → scoped chat window** ("Chat about this project" button;
+  memory + STATE injected).
 
-- Spec approved + committed (`docs/specs/2026-07-02-halo-design.md`)
-- **Slice 1** — daemon (Fastify), provider registry (Anthropic/OpenAI/Synthetic/OpenRouter/Google/Ollama via AI SDK v6), task classifier, tier routing, SQLite meter, SSE chat, Helvetica web UI. Security-hardened after code+security review (CORS allowlist, timing-safe auth, loopback guard, rate limit, bounds).
-- **Slice 2** — vault-first memory: `OS/Memory/` canon in Obsidian vault; imported 61 file memories + 2,315 claude-mem session summaries; 12,742 notes indexed AND embedded (FTS5 + nomic-embed-text via Ollama, RRF hybrid); persona + top-K notes injected into chat as plain markdown.
-- **Slice 3** — declared monthly budgets, burn-down routing (exhausted providers skipped, override wins), cancelled-vs-failed call metering, Ops burn-down view.
-- **Slice 4** — executors (claude-code headless default, codex swappable) + goal engine (markdown goals in `OS/Goals`, dispatch → LLM judge → iterate). Live-verified: real goal ran Claude Code, judge approved. Fixed chokidar fd-exhaustion (12.7k fds → 60) with native fs.watch.
-- **Slice 5** — fully local voice: push-to-talk → whisper.cpp (:2022), replies → Kokoro (:8880), £0. Live-verified both directions.
-- **Slice 6** — Projects portfolio view (git activity sparklines, STATE.md next-steps), Memory explorer view, 5-tab UI. Screenshot-verified.
-- 73 tests green; typecheck clean both packages.
+## Next / open
 
-## Next (Slice 7 — needs Shumon)
+- **Slice 7 (needs Shumon):** launchd daemon; Tailscale bind + `HALO_TOKEN`;
+  migrate `.env` keys + plaintext OpenClaw Telegram/gateway tokens into Infisical;
+  port the Telegram channel; retire OpenClaw gateway.
+- **★ Requested feature — terminal per project** (ARCHITECTURE.md backlog D-14):
+  PTY (`node-pty`) per registered project over WebSocket + `xterm.js` in a Terminal
+  tab. Bearer-gated, confined to project dirs, Tailscale-only. Decide: raw shell vs
+  scoped interactive Claude Code session. NOT yet built — this is the top backlog item.
 
-- Put provider API keys into Infisical; run daemon via `infisical run -- npm run dev`
-  (env names: ANTHROPIC_API_KEY, OPENAI_API_KEY, SYNTHETIC_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY)
-- Set HALO_TOKEN (Infisical) and bind to Tailscale IP in halo.config.yaml
-- launchd daemon (com.halo.core) for always-on
-- Migrate plaintext Telegram bot token + gateway token out of `~/.openclaw/openclaw.json` into Infisical
-- Port Telegram channel from OpenClaw; then retire OpenClaw gateway
-- Set real Synthetic monthly quota in `budgets:` (placeholder 60M)
+## Blockers / caveats
 
-## Blockers
-
-- None. Until keys land in env, only Ollama models are routable (by design).
+- **Codex executor fallback BLOCKED**: codex CLI rejects every model on the current
+  ChatGPT plan ("not supported with a ChatGPT account"). Needs plan change / re-login.
+  Executor default reverted to `claude-code`.
+- **Claude Max 5h session limit**: hit during the build; chat auto-falls-back to
+  Synthetic when it triggers. CLI chat is slow (~40s) — dropdown → Synthetic is the
+  fast escape hatch.
+- **Synthetic key `syn_...` passed through chat transcript** — consider rotating in
+  the Synthetic dashboard. Key lives in `halo/.env` (chmod 600, gitignored).
+- Voice services (whisper `:2022`, Kokoro `:8880`) get SIGKILL'd under memory pressure
+  on the 16GB Mac and respawn; ECONNREFUSED usually means mid-restart.
 
 ## Run
 
 ```bash
 cd ~/.openclaw/workspace/yodaclaude/halo
-npm run build && ./node_modules/.bin/tsx core/src/index.ts
-# open http://127.0.0.1:4720  (Chat · Projects · Goals · Memory · Ops)
+npm run build && ./node_modules/.bin/tsx core/src/index.ts   # or npm run dev
+# open http://127.0.0.1:4720   (Chat · Board · Projects · Goals · Memory · Ops)
 ```
+Key is auto-loaded from `.env`. To route chat off the Max sub, pick a model in the
+composer dropdown, or set `executors.default`/`routing.classOrder` in `halo.config.yaml`.
 
-## Files Changed
+## Files / structure
 
-Whole repo (new). Vault additions: `OS/Memory/**` (2,376 imported notes), `OS/Goals/*`.
+Whole repo. Entry `core/src/index.ts` wires everything into `AppContext` → `buildApp`.
+Config: `halo.config.yaml` (non-secret). Secrets: `.env`. See ARCHITECTURE.md §3–4.

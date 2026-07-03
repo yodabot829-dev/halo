@@ -523,24 +523,34 @@ the menu.
 13. **Per-note provenance & confidence** surfaced in search and the constellation.
 
 ### D. Work & autonomy
-14. **API-executor** — an agentic worker that does tool-use work via the Synthetic/API
+14. **★ Terminal window per project (requested).** An interactive shell inside HALO,
+    one per registered project. Backend: a PTY (`node-pty`) rooted in the project dir,
+    streamed over a WebSocket. Frontend: an `xterm.js` terminal in a new **Terminal**
+    tab (project picker / panes) or embedded in each project detail page. Lets you run
+    tests, git, or drive an interactive `claude` session live in the repo — and, over
+    Tailscale later, from your phone. Aligns with the "four parallel terminals" idea,
+    done as panes in the OS. **Cautions:** a browser-exposed shell is the single most
+    dangerous surface — must be bearer-token-gated and confined to registered project
+    dirs, never exposed beyond Tailscale; `node-pty` is a native module (rebuild like
+    better-sqlite3). Variant to decide: raw shell vs. scoped interactive Claude Code session.
+15. **API-executor** — an agentic worker that does tool-use work via the Synthetic/API
     (not just CLIs), so Synthetic can be a real executor fallback, not only a chat fallback.
-15. **Goal DAGs** — goals that spawn sub-goals and hand off, with the Board showing the tree.
-16. **Scheduled goals**, not just scheduled actions.
-17. **Cross-project actions** — one action that fans out over several registered repos.
-18. **Richer approval** — diffs in the approval card, partial approve, edit-then-approve.
+16. **Goal DAGs** — goals that spawn sub-goals and hand off, with the Board showing the tree.
+17. **Scheduled goals**, not just scheduled actions.
+18. **Cross-project actions** — one action that fans out over several registered repos.
+19. **Richer approval** — diffs in the approval card, partial approve, edit-then-approve.
 
 ### E. Interface & voice
-19. **Wake-word / always-listening** voice (deferred from slice 5).
-20. **Web UI test coverage** (component + e2e).
-21. **Mobile-first layout** for phone use over Tailscale.
-22. **Live Board push** (SSE) instead of 5s polling.
-23. **Timeline / activity view** — one chronological stream of every chat, run, goal, commit.
+20. **Wake-word / always-listening** voice (deferred from slice 5).
+21. **Web UI test coverage** (component + e2e).
+22. **Mobile-first layout** for phone use over Tailscale.
+23. **Live Board push** (SSE) instead of 5s polling.
+24. **Timeline / activity view** — one chronological stream of every chat, run, goal, commit.
 
 ### F. Distribution (only if ever wanted)
-24. **Multi-user** with real auth + per-user memory (a large architectural change;
+25. **Multi-user** with real auth + per-user memory (a large architectural change;
     explicitly out of scope for the personal OS today).
-25. **Shareable action packs** — export a set of actions/skills for a teammate to run.
+26. **Shareable action packs** — export a set of actions/skills for a teammate to run.
 
 ---
 
