@@ -1003,10 +1003,40 @@ button.primary:hover {
   padding: 16px 24px 24px;
 }
 
+.term-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .term-picker {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.term-mode {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+}
+.term-mode button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.term-mode button.active {
+  background: var(--accent);
+  color: #fff;
 }
 
 .term-chip.active {
