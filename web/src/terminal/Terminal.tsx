@@ -21,36 +21,18 @@ function TerminalPane({ project }: { project: string }) {
   // Bumping the epoch swaps the keyed container div, which remounts the
   // socket+xterm pair: reconnect / fresh attach.
   const [epoch, setEpoch] = useState(0)
-  const { micState, voiceError, startRecording, stopRecording, speak } = useVoice()
+  const { voiceError, speak } = useVoice()
   const { speakOn, toggleSpeak, handleOutput } = useTerminalSpeech((t) => speak(t, JARVIS_VOICE))
-  const { status, sendInput } = useTerminalSocket(project, container, handleOutput)
-
-  // Push-to-talk: click to record, click to stop → the transcript is sent to
-  // the Claude session (Enter appended) so you're talking to it, not leaving
-  // an unsent line at the prompt.
-  const onMic = async () => {
-    if (micState === 'recording') {
-      const text = await stopRecording()
-      if (text) sendInput(`${text}\r`)
-    } else if (micState === 'idle') {
-      await startRecording()
-    }
-  }
-  const micGlyph = micState === 'recording' ? '◉' : micState === 'transcribing' ? '…' : '🎙'
+  const { status } = useTerminalSocket(project, container, handleOutput)
 
   return (
     <div className="term-pane">
       <div className="term-bar">
         <span className={`term-status term-${status}`}>{STATUS_LABEL[status]}</span>
         <span className="term-actions">
-          <button
-            className={`ghost${micState === 'recording' ? ' term-live' : ''}`}
-            title="Push to talk — dictate a command"
-            disabled={micState === 'transcribing'}
-            onClick={() => void onMic()}
-          >
-            {micGlyph} Dictate
-          </button>
+          <span className="term-hint" title="Claude Code's built-in dictation — run it inside the session below">
+            🎙 type /voice to dictate
+          </span>
           <button
             className={`ghost${speakOn ? ' term-live' : ''}`}
             title="Read command output aloud when it finishes"
