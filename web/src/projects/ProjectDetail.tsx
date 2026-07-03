@@ -25,10 +25,12 @@ export function ProjectDetail({
   name,
   onBack,
   onChat,
+  onTerminal,
 }: {
   name: string
   onBack: () => void
   onChat?: (name: string) => void
+  onTerminal?: (name: string) => void
 }) {
   const { overview } = useMemoryStats()
   const [info, setInfo] = useState<ProjectInfo | null>(null)
@@ -63,6 +65,11 @@ export function ProjectDetail({
         {onChat && (
           <button className="primary" onClick={() => onChat(name)}>
             💬 Chat about this project
+          </button>
+        )}
+        {onTerminal && (
+          <button className="primary" onClick={() => onTerminal(name)}>
+            🖥 Terminal
           </button>
         )}
       </div>

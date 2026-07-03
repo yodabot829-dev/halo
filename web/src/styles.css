@@ -991,3 +991,61 @@ button.primary:hover {
   border: 2px solid var(--line);
   border-top-color: var(--accent);
 }
+
+/* ── Terminal per project ─────────────────────────────────────────── */
+
+.terminal-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  padding: 16px 24px 24px;
+}
+
+.term-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.term-chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.term-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0b0e14;
+}
+
+.term-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.term-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.term-status { color: var(--muted); }
+.term-status.term-live { color: #2e9e5b; }
+.term-status.term-closed, .term-status.term-exited { color: #d43c3c; }
+
+.term-screen {
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+}
+.term-screen .xterm { height: 100%; }
