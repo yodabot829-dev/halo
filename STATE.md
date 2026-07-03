@@ -41,14 +41,15 @@ Multi-LLM routing, vault memory, goals/actions with approval, voice, all local.
   live — a real `claude` TUI starts in the repo. Passed code + security review (5
   findings fixed, incl. 1 CRITICAL CSWSH).
   Spec: `docs/superpowers/specs/2026-07-03-terminal-per-project-design.md`.
-  **Voice:** 🎙 push-to-talk dictation (whisper STT ~200ms) SENDS your speech to the
-  Claude session (Enter appended). 🔊 auto-read exists (British "Jarvis" voice
-  `bm_george`, per-call `/api/voice/tts` voice override) but **cannot cleanly read
-  Claude's redrawing TUI** — it's really for shell-command output. For voice-in +
-  clean voice-out about a project, the scoped **Chat** ("💬 Chat about this project")
-  is the better surface (reads Claude's reply text, not a TUI). ⚠️ Chat currently
-  speaks in Cortana `af_sky`, not Jarvis — a one-line change if wanted.
-  **Not yet merged to main** — review branch (10 commits ahead).
+  **Voice — two paths:** the Terminal view has a **🖥 Terminal / 🎙 Voice toggle**.
+  🖥 = interactive Claude TUI (dictation sends; can't be read aloud — redraws).
+  🎙 **Voice = talking Cortana-Claude console**: reuses the Chat component scoped to
+  the project (runs Claude via the `claude -p --output-format stream-json` bridge →
+  clean text), dictate with the mic, and Cortana (`af_sky`) reads each reply aloud
+  (`speakByDefault` prop). This is the clean voice-both-ways surface; the TUI can't
+  do talk-back. (The 🔊 per-call TTS voice override + `bm_george` "Jarvis" voice also
+  exist but Voice mode uses Cortana per Shumon's call.)
+  **Not yet merged to main** — review branch (12 commits ahead).
 
 ## Next / open
 
