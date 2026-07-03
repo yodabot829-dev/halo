@@ -1,6 +1,7 @@
 import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import fastifyStatic from '@fastify/static'
+import websocket from '@fastify/websocket'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { existsSync } from 'node:fs'
 import type { ActionRunner } from '../actions/runner.js'
@@ -12,6 +13,7 @@ import type { GoalStore } from '../goals/goal-file.js'
 import type { MemoryService } from '../memory/service.js'
 import type { Meter } from '../meter/meter.js'
 import type { ModelSource } from '../providers/registry.js'
+import type { TerminalManager } from '../terminal/manager.js'
 import { isLoopback, tokenMatches } from './auth.js'
 import { registerActionRoutes } from './routes/actions.js'
 import { registerChatRoute } from './routes/chat.js'
@@ -21,6 +23,7 @@ import { registerMemoryRoutes } from './routes/memory.js'
 import { registerModelRoutes } from './routes/models.js'
 import { registerProjectRoutes } from './routes/projects.js'
 import { registerSkillRoutes } from './routes/skills.js'
+import { registerTerminalRoutes } from './routes/terminal.js'
 import { registerVoiceRoutes } from './routes/voice.js'
 import type { SkillDirs } from '../skills/proposals.js'
 
@@ -45,6 +48,8 @@ export interface AppContext {
   actions?: { runner: ActionRunner; runLog: RunLog; scheduler?: ActionScheduler }
   /** Skill-audit report + skills dirs; tests override, defaults to the real homedir paths. */
   skillDirs?: SkillDirs
+  /** Terminal-per-project; absent = terminal routes disabled. */
+  terminal?: { manager: TerminalManager; authTimeoutMs?: number }
 }
 
 export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
@@ -69,6 +74,8 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     timeWindow: '1 minute',
   })
 
+  if (ctx.terminal) await app.register(websocket)
+
   app.addHook('onRequest', async (req, reply) => {
     if (!ctx.authToken) return
     if (!req.url.startsWith('/api/')) return
@@ -89,6 +96,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   registerActionRoutes(app, ctx)
   registerLoopRoutes(app, ctx)
   registerSkillRoutes(app, ctx)
+  registerTerminalRoutes(app, ctx)
 
   if (ctx.webDist && existsSync(ctx.webDist)) {
     await app.register(fastifyStatic, { root: ctx.webDist })

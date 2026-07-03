@@ -141,6 +141,14 @@ export const configSchema = z.object({
     )
     .default([]),
   runsDir: z.string().default('OS/Runs'),
+  // Terminal-per-project: the shell each project PTY runs, and how much
+  // output is kept server-side for replay on (re)attach.
+  terminal: z
+    .object({
+      shell: z.string().min(1).default(process.env['SHELL'] ?? '/bin/zsh'),
+      scrollbackBytes: z.number().int().min(1000).max(5_000_000).default(200_000),
+    })
+    .prefault({}),
   // Fully local voice stack — £0. STT: whisper.cpp server. TTS: 'local'
   // runs Kokoro ONNX in a HALO-managed worker (spawned on demand, killed
   // after idle so the memory returns); 'http' uses an external Kokoro server.

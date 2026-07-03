@@ -74,6 +74,25 @@ describe('goals config', () => {
     expect(() => parseConfig(`${VALID}\ngoals:\n  maxConcurrent: 0\n`)).toThrow()
   })
 })
+
+describe('terminal config', () => {
+  it('defaults the terminal section when absent', () => {
+    const config = parseConfig(VALID)
+    expect(config.terminal.scrollbackBytes).toBe(200_000)
+    expect(config.terminal.shell.length).toBeGreaterThan(0)
+  })
+
+  it('accepts explicit terminal settings', () => {
+    const config = parseConfig(`${VALID}
+terminal:
+  shell: /bin/bash
+  scrollbackBytes: 50000
+`)
+    expect(config.terminal.shell).toBe('/bin/bash')
+    expect(config.terminal.scrollbackBytes).toBe(50_000)
+  })
+})
+
 describe('parseModelRef', () => {
   it('splits on the first slash only', () => {
     expect(parseModelRef('synthetic/hf:MiniMaxAI/MiniMax-M2.5')).toEqual({

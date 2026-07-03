@@ -17,6 +17,7 @@
     "@fastify/cors": "^11.0.0",
     "@fastify/rate-limit": "^11.1.0",
     "@fastify/static": "^9.0.0",
+    "@fastify/websocket": "^11.2.0",
     "@openrouter/ai-sdk-provider": "^2.10.0",
     "ai": "^6.0.218",
     "better-sqlite3": "^12.11.1",
@@ -24,6 +25,7 @@
     "fastify": "^5.9.0",
     "gray-matter": "^4.0.3",
     "kokoro-js": "^1.2.1",
+    "node-pty": "^1.1.0",
     "ollama-ai-provider-v2": "^3.6.0",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
@@ -31,6 +33,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
     "vitest": "^4.1.9"
