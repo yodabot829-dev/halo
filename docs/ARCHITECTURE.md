@@ -527,9 +527,9 @@ the menu.
     HALO, one PTY (`node-pty`) per registered project rooted in its dir, streamed over
     a WebSocket to an `xterm.js` **Terminal** view (project-chip picker) + a 🖥 Terminal
     button on each project page. Sessions persist across disconnects with ring-buffer
-    replay (tmux-lite). Decided: **raw shell** (`terminal.shell`, default `$SHELL`) —
-    a scoped Claude session is a keystroke away inside it and no safer, since Claude Code
-    runs arbitrary shell anyway. Security: **Origin check** on the WS upgrade (WebSocket
+    replay (tmux-lite). Decided (revised same day): **launches `claude` in the project
+    dir** (`terminal.command` default `claude`, cwd = project = its context) so you
+    talk to Claude about the project; `command:/bin/zsh args:[-l]` gives a raw shell. Security: **Origin check** on the WS upgrade (WebSocket
     bypasses same-origin policy — this closes a real drive-by-RCE vector), in-band bearer
     auth before project disclosure, `Object.hasOwn` allowlist, `maxPayload` + zod caps,
     PTYs killed on shutdown. Files: `core/src/terminal/manager.ts`,

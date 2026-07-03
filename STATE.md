@@ -32,18 +32,23 @@ Multi-LLM routing, vault memory, goals/actions with approval, voice, all local.
   memory + STATE injected).
 - **✅ Terminal per project (BUILT 2026-07-03, branch `feat/terminal-per-project`):**
   one `node-pty` per registered project over a WebSocket → `xterm.js` **Terminal**
-  view + 🖥 button on each project page. Raw shell (`terminal.shell`, default `$SHELL`);
-  sessions survive disconnects (ring-buffer replay). Origin-checked (closes a WS
-  drive-by-RCE hole), in-band bearer auth, `Object.hasOwn` allowlist, PTYs killed on
-  shutdown. 140 tests green, typecheck + web build clean, live-smoke-tested against a
-  real zsh. Passed code + security review (5 findings fixed, incl. 1 CRITICAL CSWSH).
+  view + 🖥 button on each project page. **Launches an interactive `claude` session
+  in the project dir** (`terminal.command` default `claude`; cwd = project = its
+  context; set command:/bin/zsh args:[-l] for a shell, or args:[--continue] to
+  resume). Sessions survive disconnects (ring-buffer replay). Origin-checked (closes
+  a WS drive-by-RCE hole), in-band bearer auth, `Object.hasOwn` allowlist, PTYs killed
+  on shutdown. 42 terminal/config tests green, typecheck + web build clean; verified
+  live — a real `claude` TUI starts in the repo. Passed code + security review (5
+  findings fixed, incl. 1 CRITICAL CSWSH).
   Spec: `docs/superpowers/specs/2026-07-03-terminal-per-project-design.md`.
-  **Voice (added same day):** 🎙 push-to-talk dictation (transcript typed at the
-  prompt, no auto-Enter — you review + run) via whisper STT; 🔊 auto-read that
-  speaks command output once it settles, in a British "Jarvis" voice (`bm_george`)
-  distinct from Chat's Cortana. Per-call TTS voice override added to
-  `/api/voice/tts` (validated). Off by default; toggle per session.
-  **Not yet merged to main** — review branch (8 commits ahead).
+  **Voice:** 🎙 push-to-talk dictation (whisper STT ~200ms) SENDS your speech to the
+  Claude session (Enter appended). 🔊 auto-read exists (British "Jarvis" voice
+  `bm_george`, per-call `/api/voice/tts` voice override) but **cannot cleanly read
+  Claude's redrawing TUI** — it's really for shell-command output. For voice-in +
+  clean voice-out about a project, the scoped **Chat** ("💬 Chat about this project")
+  is the better surface (reads Claude's reply text, not a TUI). ⚠️ Chat currently
+  speaks in Cortana `af_sky`, not Jarvis — a one-line change if wanted.
+  **Not yet merged to main** — review branch (10 commits ahead).
 
 ## Next / open
 
