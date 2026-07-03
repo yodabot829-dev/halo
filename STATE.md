@@ -42,7 +42,9 @@ Multi-LLM routing, vault memory, goals/actions with approval, voice, all local.
   findings fixed, incl. 1 CRITICAL CSWSH).
   Spec: `docs/superpowers/specs/2026-07-03-terminal-per-project-design.md`.
   **Voice — two paths:** the Terminal view has a **🖥 Terminal / 🎙 Voice toggle**.
-  🖥 = interactive Claude TUI (dictation sends; can't be read aloud — redraws).
+  🖥 = interactive Claude TUI. Dictate with Claude Code's **native `/voice`** (v2.1.69+,
+  needs claude.ai login) — the custom Dictate button was removed 2026-07-03 in its
+  favour (bar now shows a "/voice" hint). Replies can't be read aloud — TUI redraws.
   🎙 **Voice = talking Cortana-Claude console**: reuses the Chat component scoped to
   the project (runs Claude via the `claude -p --output-format stream-json` bridge →
   clean text), dictate with the mic, and Cortana (`af_sky`) reads each reply aloud
@@ -76,11 +78,18 @@ Multi-LLM routing, vault memory, goals/actions with approval, voice, all local.
 
 ## Run
 
+**launchd-supervised since 2026-07-03** (`~/Library/LaunchAgents/com.shumon.halo.plist`,
+label `com.shumon.halo`): KeepAlive (kill → respawn ~10s, verified), RunAtLoad, logs in
+`~/.halo/logs/halo.{out,err}.log`. Restart to pick up backend changes:
+
 ```bash
-cd ~/.openclaw/workspace/yodaclaude/halo
-npm run build && ./node_modules/.bin/tsx core/src/index.ts   # or npm run dev
+launchctl kickstart -k gui/501/com.shumon.halo
 # open http://127.0.0.1:4720   (Chat · Board · Projects · Terminal · Goals · Memory · Ops)
 ```
+
+Frontend-only changes just need `npm run build -w web` + browser refresh (web/dist is
+served live). Manual foreground run (agent must be bootout'd first or the port clashes):
+`npm run build && ./node_modules/.bin/tsx core/src/index.ts`
 Key is auto-loaded from `.env`. To route chat off the Max sub, pick a model in the
 composer dropdown, or set `executors.default`/`routing.classOrder` in `halo.config.yaml`.
 `node-pty` (Terminal) is a native module: after a fresh `npm install`, its prebuilt
