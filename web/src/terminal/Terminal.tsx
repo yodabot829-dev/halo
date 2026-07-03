@@ -24,12 +24,13 @@ function TerminalPane({ project }: { project: string }) {
   const { speakOn, toggleSpeak, handleOutput } = useTerminalSpeech((t) => speak(t, JARVIS_VOICE))
   const { status, sendInput } = useTerminalSocket(project, container, handleOutput)
 
-  // Push-to-talk: click to record, click to stop → transcript is typed at the
-  // prompt (no Enter — you review, then run it).
+  // Push-to-talk: click to record, click to stop → the transcript is sent to
+  // the Claude session (Enter appended) so you're talking to it, not leaving
+  // an unsent line at the prompt.
   const onMic = async () => {
     if (micState === 'recording') {
       const text = await stopRecording()
-      if (text) sendInput(text)
+      if (text) sendInput(`${text}\r`)
     } else if (micState === 'idle') {
       await startRecording()
     }
