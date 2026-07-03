@@ -52,8 +52,10 @@ export class TerminalManager {
   constructor(private readonly opts: TerminalManagerOptions) {}
 
   attach(name: string): TerminalSession {
-    const cwd = this.opts.projects[name]
-    if (!cwd) throw new Error(`unknown project: ${name}`)
+    // Object.hasOwn, not `name in` — the latter walks the prototype chain, so
+    // "constructor"/"__proto__" would pass and resolve to inherited members.
+    if (!Object.hasOwn(this.opts.projects, name)) throw new Error(`unknown project: ${name}`)
+    const cwd = this.opts.projects[name] as string
 
     const live = this.sessions.get(name) ?? this.spawn(name, cwd)
     return {
@@ -111,7 +113,9 @@ export class TerminalManager {
       for (const cb of live.subscribers) cb(data)
     })
     pty.onExit(({ exitCode }) => {
-      this.sessions.delete(name)
+      // Only evict if THIS session is still the current one — a kill()+reattach
+      // may have already replaced it with a fresh PTY.
+      if (this.sessions.get(name) === live) this.sessions.delete(name)
       for (const cb of live.exitListeners) cb(exitCode)
     })
     this.sessions.set(name, live)

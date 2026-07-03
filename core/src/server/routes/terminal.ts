@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { WebSocket, RawData } from 'ws'
 import { z } from 'zod'
 import { tokenMatches } from '../auth.js'
@@ -9,11 +9,17 @@ const AUTH_TIMEOUT_MS = 3000
 // The WS endpoint lives OUTSIDE /api/ on purpose: browsers cannot set an
 // Authorization header on a WebSocket, so the global header gate would break
 // the upgrade. Auth happens in-band instead — first frame must carry the
-// same bearer token whenever one is configured. With no token configured,
-// buildApp has already guaranteed a loopback-only bind.
+// same bearer token whenever one is configured.
+//
+// WebSocket is NOT subject to same-origin policy, so a malicious page in the
+// user's browser could open ws://127.0.0.1:4720/... even in loopback mode.
+// The Origin check below is the only defence in the no-token case and runs
+// before anything else. Text-frame length is bounded here and at the
+// transport (@fastify/websocket maxPayload) so an unauthenticated peer cannot
+// force a giant JSON.parse.
 const frameSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('auth'), token: z.string() }),
-  z.object({ type: z.literal('input'), data: z.string() }),
+  z.object({ type: z.literal('auth'), token: z.string().max(512) }),
+  z.object({ type: z.literal('input'), data: z.string().max(1_000_000) }),
   z.object({
     type: z.literal('resize'),
     cols: z.number().int().min(1).max(1000),
@@ -31,17 +37,35 @@ function parseFrame(raw: RawData): Frame | null {
   }
 }
 
+/**
+ * Browsers always send Origin on a WS handshake and cannot forge it, so
+ * rejecting a mismatched Origin closes the cross-site-hijack vector. A
+ * missing Origin means a non-browser client (tests, CLI, a raw Tailscale
+ * peer) — those already have shell access, so they are allowed through.
+ */
+function originAllowed(req: FastifyRequest, ctx: AppContext): boolean {
+  const origin = req.headers.origin
+  if (!origin) return true
+  const host = req.headers.host
+  if (host && (origin === `http://${host}` || origin === `https://${host}`)) return true
+  return ctx.config.server.corsOrigins.includes(origin)
+}
+
 export function registerTerminalRoutes(app: FastifyInstance, ctx: AppContext): void {
   const terminal = ctx.terminal
   if (!terminal) return
   const { manager } = terminal
   const authTimeoutMs = terminal.authTimeoutMs ?? AUTH_TIMEOUT_MS
 
+  // Terminate every PTY when the daemon shuts down, so interactive login
+  // shells aren't orphaned across restarts.
+  app.addHook('onClose', async () => manager.killAll())
+
   app.get('/api/terminal/sessions', async () => ({ success: true, data: manager.list() }))
 
   app.delete('/api/terminal/:name', async (req, reply) => {
     const { name } = req.params as { name: string }
-    if (!(name in ctx.config.projects)) {
+    if (!Object.hasOwn(ctx.config.projects, name)) {
       return reply.code(400).send({ success: false, error: 'unknown project' })
     }
     manager.kill(name)
@@ -49,34 +73,50 @@ export function registerTerminalRoutes(app: FastifyInstance, ctx: AppContext): v
   })
 
   app.get('/ws/terminal/:name', { websocket: true }, (socket: WebSocket, req) => {
+    // A single generic close reason for every pre-attach failure so the
+    // socket can't be used to distinguish "unknown project" from "bad token"
+    // from "blocked origin".
+    const deny = () => socket.close(1008, 'forbidden')
+    if (!originAllowed(req, ctx)) return deny()
+
     const { name } = req.params as { name: string }
-    if (!(name in ctx.config.projects)) {
-      socket.close(1008, 'unknown project')
-      return
+    const known = () => Object.hasOwn(ctx.config.projects, name)
+
+    // No token → same-origin (enforced above) loopback UI only; safe to attach.
+    if (!ctx.authToken) {
+      if (!known()) return deny()
+      return attach(socket, name)
     }
 
-    if (!ctx.authToken) {
-      attach(socket, name)
-      return
-    }
+    // Token configured → authenticate BEFORE revealing whether the project
+    // exists, so an unauthenticated peer learns nothing about the project set.
     const token = ctx.authToken
-    const timer = setTimeout(() => socket.close(1008, 'auth timeout'), authTimeoutMs)
+    const timer = setTimeout(deny, authTimeoutMs)
     socket.once('message', (raw) => {
       clearTimeout(timer)
       const frame = parseFrame(raw)
-      if (frame?.type === 'auth' && tokenMatches(`Bearer ${frame.token}`, token)) {
-        attach(socket, name)
-      } else {
-        socket.close(1008, 'unauthorized')
-      }
+      const authed = frame?.type === 'auth' && tokenMatches(`Bearer ${frame.token}`, token)
+      if (!authed || !known()) return deny()
+      attach(socket, name)
     })
     socket.once('close', () => clearTimeout(timer))
   })
 
   function attach(socket: WebSocket, name: string): void {
-    const session = manager.attach(name)
     const send = (payload: Record<string, unknown>) => {
       if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(payload))
+    }
+
+    // The project is already known-registered here, so a throw means a real
+    // spawn failure (dir gone, shell missing, EMFILE) — surface it, don't hang.
+    let session
+    try {
+      session = manager.attach(name)
+    } catch (err) {
+      app.log.error(err, `terminal attach failed: ${name}`)
+      send({ type: 'error', message: 'failed to start shell' })
+      socket.close(1011, 'attach failed')
+      return
     }
 
     send({ type: 'ready', replay: session.replay })

@@ -41,7 +41,9 @@ function makeFakePty() {
   return fake
 }
 
-async function makeApp(opts: { authToken?: string; authTimeoutMs?: number } = {}) {
+async function makeApp(
+  opts: { authToken?: string; authTimeoutMs?: number; spawnThrows?: boolean } = {},
+) {
   const config = parseConfig(CONFIG_YAML)
   const registry = new ModelRegistry(config, {})
   const meter = new Meter(':memory:')
@@ -51,6 +53,7 @@ async function makeApp(opts: { authToken?: string; authTimeoutMs?: number } = {}
     shell: '/bin/zsh',
     scrollbackBytes: 10_000,
     spawn: () => {
+      if (opts.spawnThrows) throw new Error('spawn boom')
       const p = makeFakePty()
       ptys.push(p)
       return p as PtyLike
@@ -69,22 +72,28 @@ async function makeApp(opts: { authToken?: string; authTimeoutMs?: number } = {}
   await app.listen({ port: 0, host: '127.0.0.1' })
   const address = app.server.address()
   const port = typeof address === 'object' && address ? address.port : 0
-  wsConnect = (path: string) =>
-    new Promise<WebSocket>((resolve, reject) => {
-      const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`)
-      // Buffer from the very first frame — the server can send `ready`
-      // before a test attaches its own listener.
-      const queue: Record<string, unknown>[] = []
-      queues.set(ws, queue)
-      ws.on('message', (raw) => queue.push(JSON.parse(raw.toString()) as Record<string, unknown>))
-      ws.on('close', (code) => closeCodes.set(ws, code))
-      ws.once('open', () => resolve(ws))
-      ws.once('error', reject)
-    })
+  wsPort = port
+  wsSameOrigin = `http://127.0.0.1:${port}`
   return { app, meter, manager, ptys }
 }
 
-let wsConnect: (path: string) => Promise<WebSocket>
+let wsPort = 0
+let wsSameOrigin = ''
+const wsConnect = (path: string, connectOpts: { origin?: string } = {}): Promise<WebSocket> =>
+  new Promise<WebSocket>((resolve, reject) => {
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${wsPort}${path}`,
+      connectOpts.origin ? { headers: { origin: connectOpts.origin } } : undefined,
+    )
+    // Buffer from the very first frame — the server can send `ready` before a
+    // test attaches its own listener.
+    const queue: Record<string, unknown>[] = []
+    queues.set(ws, queue)
+    ws.on('message', (raw) => queue.push(JSON.parse(raw.toString()) as Record<string, unknown>))
+    ws.on('close', (code) => closeCodes.set(ws, code))
+    ws.once('open', () => resolve(ws))
+    ws.once('error', reject)
+  })
 const queues = new WeakMap<WebSocket, Record<string, unknown>[]>()
 const closeCodes = new WeakMap<WebSocket, number>()
 
@@ -145,6 +154,47 @@ describe('terminal WS route', () => {
     ;({ app, meter } = await makeApp())
     const ws = await wsConnect('/ws/terminal/evil')
     expect(await waitForClose(ws)).toBe(1008)
+  })
+
+  it('closes with 1008 for a prototype-chain project name', async () => {
+    ;({ app, meter } = await makeApp())
+    const ws = await wsConnect('/ws/terminal/constructor')
+    expect(await waitForClose(ws)).toBe(1008)
+  })
+
+  it('rejects a cross-origin WebSocket connection', async () => {
+    // WebSocket is exempt from same-origin policy; a mismatched Origin is the
+    // only signal that a page other than the SPA opened this socket.
+    let ptys: ReturnType<typeof makeFakePty>[]
+    ;({ app, meter, ptys } = await makeApp())
+    const ws = await wsConnect('/ws/terminal/halo', { origin: 'http://evil.example' })
+    expect(await waitForClose(ws)).toBe(1008)
+    expect(ptys).toHaveLength(0)
+  })
+
+  it('accepts a same-origin WebSocket connection', async () => {
+    ;({ app, meter } = await makeApp())
+    const ws = await wsConnect('/ws/terminal/halo', { origin: wsSameOrigin })
+    const ready = await nextMessage(ws)
+    expect(ready['type']).toBe('ready')
+    ws.terminate()
+  })
+
+  it('closes an authenticated connection to a prototype-chain name', async () => {
+    let ptys: ReturnType<typeof makeFakePty>[]
+    ;({ app, meter, ptys } = await makeApp({ authToken: 'tok-1' }))
+    const ws = await wsConnect('/ws/terminal/constructor')
+    ws.send(JSON.stringify({ type: 'auth', token: 'tok-1' }))
+    expect(await waitForClose(ws)).toBe(1008)
+    expect(ptys).toHaveLength(0)
+  })
+
+  it('surfaces an error frame when the shell fails to spawn', async () => {
+    ;({ app, meter } = await makeApp({ spawnThrows: true }))
+    const ws = await wsConnect('/ws/terminal/halo')
+    const frame = await nextMessage(ws)
+    expect(frame).toEqual({ type: 'error', message: 'failed to start shell' })
+    expect(await waitForClose(ws)).toBe(1011)
   })
 
   it('requires a valid auth frame when a token is configured', async () => {

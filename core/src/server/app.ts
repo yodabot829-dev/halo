@@ -74,7 +74,10 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     timeWindow: '1 minute',
   })
 
-  if (ctx.terminal) await app.register(websocket)
+  // maxPayload bounds a frame BEFORE JSON.parse runs, so an unauthenticated
+  // peer can't force a giant parse on the pre-auth frame. 1 MiB covers large
+  // terminal pastes; keystrokes are bytes.
+  if (ctx.terminal) await app.register(websocket, { options: { maxPayload: 1_048_576 } })
 
   app.addHook('onRequest', async (req, reply) => {
     if (!ctx.authToken) return
