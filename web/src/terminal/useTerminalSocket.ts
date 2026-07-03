@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
@@ -12,9 +12,17 @@ export type TerminalStatus = 'connecting' | 'live' | 'closed' | 'exited'
  * First frame carries the bearer token (browsers can't set an Authorization
  * header on a WebSocket); the server ignores it when auth is off.
  */
-export function useTerminalSocket(project: string, container: HTMLElement | null) {
+export function useTerminalSocket(
+  project: string,
+  container: HTMLElement | null,
+  onOutput?: (chunk: string) => void,
+) {
   const [status, setStatus] = useState<TerminalStatus>('connecting')
   const socketRef = useRef<WebSocket | null>(null)
+  const termRef = useRef<XTerm | null>(null)
+  // Latest onOutput without re-subscribing the socket each render.
+  const onOutputRef = useRef(onOutput)
+  onOutputRef.current = onOutput
 
   useEffect(() => {
     if (!container) return
@@ -30,6 +38,7 @@ export function useTerminalSocket(project: string, container: HTMLElement | null
     term.loadAddon(fit)
     term.open(container)
     fit.fit()
+    termRef.current = term
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     const socket = new WebSocket(`${proto}://${location.host}/ws/terminal/${encodeURIComponent(project)}`)
@@ -49,7 +58,9 @@ export function useTerminalSocket(project: string, container: HTMLElement | null
         setStatus('live')
         if (typeof frame['replay'] === 'string' && frame['replay']) term.write(frame['replay'])
       } else if (frame['type'] === 'data') {
-        term.write(frame['data'] as string)
+        const data = frame['data'] as string
+        term.write(data)
+        onOutputRef.current?.(data)
       } else if (frame['type'] === 'exit') {
         setStatus('exited')
         term.write(`\r\n[shell exited: ${String(frame['code'])}]\r\n`)
@@ -72,10 +83,21 @@ export function useTerminalSocket(project: string, container: HTMLElement | null
       socket.close()
       term.dispose()
       socketRef.current = null
+      termRef.current = null
     }
   }, [project, container])
 
-  return { status }
+  // Inject text as if typed (dictation). No trailing Enter — the user reviews
+  // and runs it. Refocus the terminal so their Enter lands there.
+  const sendInput = useCallback((text: string) => {
+    const socket = socketRef.current
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'input', data: text }))
+      termRef.current?.focus()
+    }
+  }, [])
+
+  return { status, sendInput }
 }
 
 /** Ask the daemon to kill the project's PTY (next attach spawns fresh). */
