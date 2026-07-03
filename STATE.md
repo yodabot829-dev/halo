@@ -30,16 +30,25 @@ Multi-LLM routing, vault memory, goals/actions with approval, voice, all local.
 - **Wide-screen layout**: app fills large displays; chat stays a centered column.
 - **Click a project → scoped chat window** ("Chat about this project" button;
   memory + STATE injected).
+- **✅ Terminal per project (BUILT 2026-07-03, branch `feat/terminal-per-project`):**
+  one `node-pty` per registered project over a WebSocket → `xterm.js` **Terminal**
+  view + 🖥 button on each project page. Raw shell (`terminal.shell`, default `$SHELL`);
+  sessions survive disconnects (ring-buffer replay). Origin-checked (closes a WS
+  drive-by-RCE hole), in-band bearer auth, `Object.hasOwn` allowlist, PTYs killed on
+  shutdown. 140 tests green, typecheck + web build clean, live-smoke-tested against a
+  real zsh. Passed code + security review (5 findings fixed, incl. 1 CRITICAL CSWSH).
+  Spec: `docs/superpowers/specs/2026-07-03-terminal-per-project-design.md`.
+  **Not yet merged to main** — review branch.
 
 ## Next / open
 
+- **Merge `feat/terminal-per-project`** (4 commits ahead of main) once Shumon signs off.
 - **Slice 7 (needs Shumon):** launchd daemon; Tailscale bind + `HALO_TOKEN`;
   migrate `.env` keys + plaintext OpenClaw Telegram/gateway tokens into Infisical;
   port the Telegram channel; retire OpenClaw gateway.
-- **★ Requested feature — terminal per project** (ARCHITECTURE.md backlog D-14):
-  PTY (`node-pty`) per registered project over WebSocket + `xterm.js` in a Terminal
-  tab. Bearer-gated, confined to project dirs, Tailscale-only. Decide: raw shell vs
-  scoped interactive Claude Code session. NOT yet built — this is the top backlog item.
+- **Next backlog (ARCHITECTURE.md §10):** streaming Max-sub bridge (7), multi-model
+  council chat (8), knowledge-graph memory (10). Terminal follow-ups: per-tab
+  Claude-mode toggle, panes/splits.
 
 ## Blockers / caveats
 
@@ -59,10 +68,14 @@ Multi-LLM routing, vault memory, goals/actions with approval, voice, all local.
 ```bash
 cd ~/.openclaw/workspace/yodaclaude/halo
 npm run build && ./node_modules/.bin/tsx core/src/index.ts   # or npm run dev
-# open http://127.0.0.1:4720   (Chat · Board · Projects · Goals · Memory · Ops)
+# open http://127.0.0.1:4720   (Chat · Board · Projects · Terminal · Goals · Memory · Ops)
 ```
 Key is auto-loaded from `.env`. To route chat off the Max sub, pick a model in the
 composer dropdown, or set `executors.default`/`routing.classOrder` in `halo.config.yaml`.
+`node-pty` (Terminal) is a native module: after a fresh `npm install`, its prebuilt
+`spawn-helper` may land without the exec bit — `chmod +x
+node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper` if PTYs fail with
+`posix_spawnp failed`.
 
 ## Files / structure
 

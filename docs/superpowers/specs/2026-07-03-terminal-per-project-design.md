@@ -87,13 +87,36 @@ terminal:            # all optional
 
 ## Security posture (the honest version)
 
-A browser-exposed shell is HALO's most dangerous surface. Mitigations:
-allowlisted project names only; command fixed server-side from config; bearer
-token required in-band whenever one is configured; non-loopback bind already
-impossible without a token; never exposed beyond loopback/Tailscale. **Not**
-claimed: the shell is *rooted* in the project dir, not jailed — `cd ..` works.
-Jailing a personal shell on your own machine serves nobody; the boundary is
-the network + token, and that is stated plainly in the UI docs.
+A browser-exposed shell is HALO's most dangerous surface. Mitigations, in the
+order they run on a WS upgrade:
+
+1. **Origin check** — WebSocket is exempt from same-origin policy, so a
+   malicious page open in the user's browser could otherwise connect to
+   `ws://127.0.0.1:4720/ws/terminal/:name` even in loopback-no-token mode and
+   get a shell (drive-by RCE). Browsers always send `Origin` on a WS handshake
+   and cannot forge it; a mismatched Origin is rejected before anything else.
+   A missing Origin (non-browser client — tests, CLI, raw Tailscale peer, all
+   of which already have shell access) is allowed through. This is the *only*
+   defence in the no-token case, so it runs unconditionally.
+2. **Auth before disclosure** — when a token is configured, the in-band auth
+   frame is validated before the project-existence check, so an unauthenticated
+   peer learns nothing about the project set. All pre-attach failures share one
+   generic `forbidden` close reason (no oracle).
+3. **Allowlist** — `Object.hasOwn` (not `in`, which walks the prototype chain);
+   command + cwd fixed server-side from config; the client chooses neither.
+4. **Payload bounds** — transport `maxPayload` 1 MiB + zod length caps, so a
+   pre-auth frame can't force a giant `JSON.parse`.
+5. **Network boundary** — non-loopback bind already impossible without a token;
+   never exposed beyond loopback/Tailscale.
+
+**Not** claimed: the shell is *rooted* in the project dir, not jailed —
+`cd ..` works. Jailing a personal shell on your own machine serves nobody; the
+boundary is Origin + network + token.
+
+Deferred (accepted risk for a single-user OS, once Origin is enforced): a hard
+cap on concurrent sockets per session and an idle-detach timeout. The browser
+amplification vector they'd guard against is already closed by the Origin
+check; revisit if HALO ever goes multi-user (backlog 25).
 
 ## Testing
 
