@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../api'
+import { useVoice } from '../chat/useVoice'
+import { useTerminalSpeech } from './useTerminalSpeech'
 import { killTerminal, useTerminalSocket } from './useTerminalSocket'
 
 const STATUS_LABEL = {
@@ -14,13 +16,42 @@ function TerminalPane({ project }: { project: string }) {
   // Bumping the epoch swaps the keyed container div, which remounts the
   // socket+xterm pair: reconnect / fresh attach.
   const [epoch, setEpoch] = useState(0)
-  const { status } = useTerminalSocket(project, container)
+  const { micState, voiceError, startRecording, stopRecording, speak } = useVoice()
+  const { speakOn, toggleSpeak, handleOutput } = useTerminalSpeech(speak)
+  const { status, sendInput } = useTerminalSocket(project, container, handleOutput)
+
+  // Push-to-talk: click to record, click to stop → transcript is typed at the
+  // prompt (no Enter — you review, then run it).
+  const onMic = async () => {
+    if (micState === 'recording') {
+      const text = await stopRecording()
+      if (text) sendInput(text)
+    } else if (micState === 'idle') {
+      await startRecording()
+    }
+  }
+  const micGlyph = micState === 'recording' ? '◉' : micState === 'transcribing' ? '…' : '🎙'
 
   return (
     <div className="term-pane">
       <div className="term-bar">
         <span className={`term-status term-${status}`}>{STATUS_LABEL[status]}</span>
         <span className="term-actions">
+          <button
+            className={`ghost${micState === 'recording' ? ' term-live' : ''}`}
+            title="Push to talk — dictate a command"
+            disabled={micState === 'transcribing'}
+            onClick={() => void onMic()}
+          >
+            {micGlyph} Dictate
+          </button>
+          <button
+            className={`ghost${speakOn ? ' term-live' : ''}`}
+            title="Read command output aloud when it finishes"
+            onClick={toggleSpeak}
+          >
+            {speakOn ? '🔊' : '🔇'} Speak
+          </button>
           {(status === 'closed' || status === 'exited') && (
             <button className="ghost" onClick={() => setEpoch((e) => e + 1)}>
               ↻ Reconnect
@@ -34,6 +65,7 @@ function TerminalPane({ project }: { project: string }) {
           </button>
         </span>
       </div>
+      {voiceError && <div className="term-voice-error">{voiceError}</div>}
       <div key={epoch} className="term-screen" ref={setContainer} />
     </div>
   )
