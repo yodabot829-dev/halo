@@ -11,13 +11,17 @@ const STATUS_LABEL = {
   exited: 'shell exited',
 } as const
 
+// British male Kokoro voice — the terminal's "Jarvis". Chat keeps Cortana
+// (af_sky) via the global config; only these auto-reads use this voice.
+const JARVIS_VOICE = 'bm_george'
+
 function TerminalPane({ project }: { project: string }) {
   const [container, setContainer] = useState<HTMLElement | null>(null)
   // Bumping the epoch swaps the keyed container div, which remounts the
   // socket+xterm pair: reconnect / fresh attach.
   const [epoch, setEpoch] = useState(0)
   const { micState, voiceError, startRecording, stopRecording, speak } = useVoice()
-  const { speakOn, toggleSpeak, handleOutput } = useTerminalSpeech(speak)
+  const { speakOn, toggleSpeak, handleOutput } = useTerminalSpeech((t) => speak(t, JARVIS_VOICE))
   const { status, sendInput } = useTerminalSocket(project, container, handleOutput)
 
   // Push-to-talk: click to record, click to stop → transcript is typed at the

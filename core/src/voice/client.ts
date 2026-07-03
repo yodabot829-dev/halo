@@ -43,13 +43,17 @@ export async function transcribe(endpoints: VoiceEndpoints, wav: Buffer): Promis
 }
 
 /** Kokoro (OpenAI-compatible) speech synthesis → mp3 bytes. */
-export async function synthesize(endpoints: VoiceEndpoints, text: string): Promise<Buffer> {
+export async function synthesize(
+  endpoints: VoiceEndpoints,
+  text: string,
+  voice?: string,
+): Promise<Buffer> {
   const res = await fetch(`${endpoints.ttsUrl}/audio/speech`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       model: 'kokoro',
-      voice: endpoints.ttsVoice,
+      voice: voice ?? endpoints.ttsVoice,
       speed: endpoints.ttsSpeed,
       input: text,
       response_format: 'mp3',
