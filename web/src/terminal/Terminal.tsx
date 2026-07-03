@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../api'
+import { Chat } from '../chat/Chat'
 import { useVoice } from '../chat/useVoice'
 import { useTerminalSpeech } from './useTerminalSpeech'
 import { killTerminal, useTerminalSocket } from './useTerminalSocket'
@@ -76,8 +77,13 @@ function TerminalPane({ project }: { project: string }) {
   )
 }
 
+type Mode = 'terminal' | 'voice'
+
 export function Terminal({ scope, onScopeChange }: { scope: string; onScopeChange: (name: string) => void }) {
   const [projects, setProjects] = useState<string[]>([])
+  // Terminal = interactive Claude TUI (silent, full visuals).
+  // Voice = a talking Claude console (streams clean replies, Cortana reads them).
+  const [mode, setMode] = useState<Mode>('terminal')
 
   useEffect(() => {
     apiFetch('/api/projects/names')
@@ -92,21 +98,41 @@ export function Terminal({ scope, onScopeChange }: { scope: string; onScopeChang
 
   return (
     <div className="terminal-view">
-      <div className="term-picker">
-        {projects.map((name) => (
+      <div className="term-topbar">
+        <div className="term-picker">
+          {projects.map((name) => (
+            <button
+              key={name}
+              className={`chip term-chip${name === scope ? ' active' : ''}`}
+              onClick={() => onScopeChange(name)}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+        <div className="term-mode">
           <button
-            key={name}
-            className={`chip term-chip${name === scope ? ' active' : ''}`}
-            onClick={() => onScopeChange(name)}
+            className={mode === 'terminal' ? 'active' : ''}
+            onClick={() => setMode('terminal')}
+            title="Interactive Claude session (silent, full TUI)"
           >
-            {name}
+            🖥 Terminal
           </button>
-        ))}
+          <button
+            className={mode === 'voice' ? 'active' : ''}
+            onClick={() => setMode('voice')}
+            title="Talking Claude — dictate and hear replies read aloud"
+          >
+            🎙 Voice
+          </button>
+        </div>
       </div>
-      {scope ? (
-        <TerminalPane key={scope} project={scope} />
-      ) : (
+      {!scope ? (
         <p className="detail-sub">No projects registered.</p>
+      ) : mode === 'voice' ? (
+        <Chat key={`voice-${scope}`} scope={scope} onScopeChange={onScopeChange} speakByDefault />
+      ) : (
+        <TerminalPane key={scope} project={scope} />
       )}
     </div>
   )

@@ -8,9 +8,11 @@ interface ChatProps {
   /** Controlled project scope (from App), so a project page can pre-set it. */
   scope?: string
   onScopeChange?: (scope: string) => void
+  /** Start with reply-reading on (terminal voice mode). */
+  speakByDefault?: boolean
 }
 
-export function Chat({ scope: scopeProp, onScopeChange }: ChatProps = {}) {
+export function Chat({ scope: scopeProp, onScopeChange, speakByDefault = false }: ChatProps = {}) {
   const { messages, streaming, error, send, stop } = useChat()
   const { micState, voiceError, startRecording, stopRecording, speak } = useVoice()
   const [models, setModels] = useState<ModelEntry[]>([])
@@ -20,7 +22,7 @@ export function Chat({ scope: scopeProp, onScopeChange }: ChatProps = {}) {
   const scope = scopeProp ?? scopeState
   const setScope = onScopeChange ?? setScopeState
   const [draft, setDraft] = useState('')
-  const [speakReplies, setSpeakReplies] = useState(false)
+  const [speakReplies, setSpeakReplies] = useState(speakByDefault)
   const bottomRef = useRef<HTMLDivElement>(null)
   const spokenCountRef = useRef(0)
 
