@@ -36,4 +36,10 @@ npm run build          # web dist + core dist
 Run with secrets: `infisical run -- npm run dev` (keys land as env vars, e.g.
 `ANTHROPIC_API_KEY`, `SYNTHETIC_API_KEY`; see `halo.config.yaml` for the full list).
 
-Spec: `docs/specs/2026-07-02-halo-design.md`.
+## Documentation
+
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — full reference: every component,
+  how they're wired, data-flow diagrams, API, config, limitations, and backlog.
+  Written to be understood by a human or any LLM. **Start here.**
+- `docs/PROJECT-SKILLS.md` — per-project skills/stacks/services map.
+- `docs/specs/2026-07-02-halo-design.md` — the original approved design spec.
