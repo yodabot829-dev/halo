@@ -5,7 +5,15 @@ import { LocalTts } from '../../voice/kokoro-local.js'
 import { sayFallback } from '../../voice/say-fallback.js'
 import type { AppContext } from '../app.js'
 
-const ttsSchema = z.object({ text: z.string().min(1).max(4000) })
+const ttsSchema = z.object({
+  text: z.string().min(1).max(4000),
+  // Optional per-call voice (e.g. the terminal's Jarvis voice). Restricted to
+  // a safe id charset — never interpolated, but keep the surface tight.
+  voice: z
+    .string()
+    .regex(/^[a-z]{2}_[a-z]+$/)
+    .optional(),
+})
 const MAX_AUDIO_BYTES = 15 * 1024 * 1024
 
 export function registerVoiceRoutes(app: FastifyInstance, ctx: AppContext): void {
@@ -51,10 +59,10 @@ export function registerVoiceRoutes(app: FastifyInstance, ctx: AppContext): void
     }
     try {
       if (localTts) {
-        const wav = await localTts.synthesize(parsed.data.text)
+        const wav = await localTts.synthesize(parsed.data.text, parsed.data.voice)
         return reply.header('content-type', 'audio/wav').send(wav)
       }
-      const audio = await synthesize(ctx.config.voice, parsed.data.text)
+      const audio = await synthesize(ctx.config.voice, parsed.data.text, parsed.data.voice)
       return reply.header('content-type', 'audio/mpeg').send(audio)
     } catch (err) {
       app.log.error(err, 'tts failed — trying macOS say fallback')

@@ -120,7 +120,7 @@ export class LocalTts {
     }, this.opts.idleUnloadMs)
   }
 
-  async synthesize(text: string): Promise<Buffer> {
+  async synthesize(text: string, voice?: string): Promise<Buffer> {
     await this.ensureWorker()
     const id = this.nextId++
     const wav = await new Promise<Buffer>((resolvePromise, rejectPromise) => {
@@ -130,7 +130,7 @@ export class LocalTts {
       }, REQUEST_TIMEOUT_MS)
       this.pending.set(id, { resolve: resolvePromise, reject: rejectPromise, timer })
       this.child!.stdin!.write(
-        `${JSON.stringify({ id, text, voice: this.opts.voice, speed: this.opts.speed })}\n`,
+        `${JSON.stringify({ id, text, voice: voice ?? this.opts.voice, speed: this.opts.speed })}\n`,
       )
     })
     this.touchIdle()

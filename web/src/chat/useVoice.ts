@@ -60,12 +60,12 @@ export function useVoice() {
     })
   }, [])
 
-  const speak = useCallback(async (text: string) => {
+  const speak = useCallback(async (text: string, voice?: string) => {
     try {
       const res = await apiFetch('/api/voice/tts', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text: text.slice(0, 4000) }),
+        body: JSON.stringify({ text: text.slice(0, 4000), ...(voice ? { voice } : {}) }),
       })
       if (!res.ok) throw new Error(`tts failed: ${res.status}`)
       const url = URL.createObjectURL(await res.blob())
