@@ -536,7 +536,11 @@ the menu.
     `core/src/server/routes/terminal.ts`, `web/src/terminal/`. Spec + full rationale:
     `docs/superpowers/specs/2026-07-03-terminal-per-project-design.md`. `node-pty` is a
     native module (rebuild like better-sqlite3; prebuild's `spawn-helper` needs +x).
-    Deferred: per-tab Claude-mode toggle, panes/splits, concurrent-socket cap.
+    **Voice:** 🎙 push-to-talk dictation (whisper STT; transcript typed, not auto-run)
+    + 🔊 auto-read of command output (ANSI-stripped, settle-debounced) in a British
+    "Jarvis" voice (`bm_george`) — a per-call `voice` override was added to
+    `/api/voice/tts`; Chat keeps Cortana. Deferred: per-tab Claude-mode toggle,
+    panes/splits, concurrent-socket cap.
 15. **API-executor** — an agentic worker that does tool-use work via the Synthetic/API
     (not just CLIs), so Synthetic can be a real executor fallback, not only a chat fallback.
 16. **Goal DAGs** — goals that spawn sub-goals and hand off, with the Board showing the tree.
