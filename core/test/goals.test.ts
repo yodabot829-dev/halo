@@ -6,6 +6,7 @@ import { parseClaudeLine } from '../src/executor/claude-code.js'
 import type { Executor, ExecResult } from '../src/executor/types.js'
 import { GoalEngine, type Verdict } from '../src/goals/engine.js'
 import { GoalStore, parseGoal, serializeGoal, type Goal } from '../src/goals/goal-file.js'
+import type { CallRecord } from '../src/meter/meter.js'
 
 const GOAL_INPUT = {
   title: 'Fix the flaky test',
@@ -253,8 +254,98 @@ describe('parseClaudeLine', () => {
     expect(parseClaudeLine(line)).toEqual({ kind: 'output', text: 'RESULT: all done' })
   })
 
+  it('extracts usage and cost from the result line', () => {
+    const line = JSON.stringify({
+      type: 'result',
+      result: 'all done',
+      total_cost_usd: 0.1234,
+      usage: {
+        input_tokens: 4,
+        cache_creation_input_tokens: 100,
+        cache_read_input_tokens: 200,
+        output_tokens: 50,
+      },
+      modelUsage: { 'claude-sonnet-4-5': {} },
+    })
+    expect(parseClaudeLine(line)).toEqual({
+      kind: 'output',
+      text: 'RESULT: all done',
+      usage: {
+        inputTokens: 304,
+        outputTokens: 50,
+        costUsd: 0.1234,
+        model: 'claude-sonnet-4-5',
+      },
+    })
+  })
+
+  it('omits usage when the result line has none', () => {
+    const line = JSON.stringify({ type: 'result', result: 'all done' })
+    expect(parseClaudeLine(line)).not.toHaveProperty('usage')
+  })
+
   it('drops noise and non-JSON', () => {
     expect(parseClaudeLine('not json')).toBeNull()
     expect(parseClaudeLine(JSON.stringify({ type: 'system' }))).toBeNull()
+  })
+})
+
+describe('executor metering', () => {
+  let dir: string
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'halo-goals-'))
+  })
+
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+  it('records executor usage to the meter as goal-exec', async () => {
+    const recorded: CallRecord[] = []
+    const usageResult: ExecResult = {
+      ...okResult,
+      usage: { inputTokens: 300, outputTokens: 40, costUsd: 0.05, model: 'claude-sonnet-4-5' },
+    }
+    const store = new GoalStore(dir)
+    const engine = new GoalEngine({
+      store,
+      executors: new Map([['fake', fakeExecutor([usageResult])]]),
+      projects: { demo: dir },
+      judge: async () => ({ met: true, feedback: 'ok' }),
+      maxIterations: 3,
+      stepTimeoutMs: 5000,
+      maxConcurrent: 1,
+      meter: { record: (call) => recorded.push(call) },
+    })
+    const goal = store.create(GOAL_INPUT)
+    await engine.run(goal.id)
+    expect(recorded).toEqual([
+      {
+        provider: 'fake',
+        model: 'claude-sonnet-4-5',
+        taskClass: 'goal-exec',
+        inputTokens: 300,
+        outputTokens: 40,
+        costUsd: 0.05,
+        ok: true,
+      },
+    ])
+  })
+
+  it('skips metering when the executor reports no usage', async () => {
+    const recorded: CallRecord[] = []
+    const store = new GoalStore(dir)
+    const engine = new GoalEngine({
+      store,
+      executors: new Map([['fake', fakeExecutor([okResult])]]),
+      projects: { demo: dir },
+      judge: async () => ({ met: true, feedback: 'ok' }),
+      maxIterations: 3,
+      stepTimeoutMs: 5000,
+      maxConcurrent: 1,
+      meter: { record: (call) => recorded.push(call) },
+    })
+    const goal = store.create(GOAL_INPUT)
+    await engine.run(goal.id)
+    expect(recorded).toEqual([])
   })
 })

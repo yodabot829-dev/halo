@@ -1,4 +1,5 @@
 import type { Executor } from '../executor/types.js'
+import type { CallRecord } from '../meter/meter.js'
 import type { Goal, GoalStore } from './goal-file.js'
 
 export interface Verdict {
@@ -13,6 +14,11 @@ export interface GoalEvent {
   text: string
 }
 
+/** Narrow meter surface — the engine only records, never queries. */
+export interface UsageRecorder {
+  record(call: CallRecord): void
+}
+
 export interface EngineDeps {
   store: GoalStore
   executors: Map<string, Executor>
@@ -25,6 +31,8 @@ export interface EngineDeps {
   maxConcurrent: number
   /** Kill an executor step that produces no output for this long. Off when unset. */
   inactivityTimeoutMs?: number
+  /** Records executor token/cost usage (taskClass goal-exec). Off when unset. */
+  meter?: UsageRecorder
 }
 
 function buildTaskPrompt(goal: Goal, feedback: string | null, goalFilePath: string): string {
@@ -134,6 +142,18 @@ export class GoalEngine {
           inactivityTimeoutMs: this.deps.inactivityTimeoutMs,
           onEvent: (e) => this.emit(goal, { kind: e.kind === 'error' ? 'error' : 'output', text: e.text }),
         })
+
+        if (result.usage) {
+          this.deps.meter?.record({
+            provider: goal.executor,
+            model: result.usage.model ?? goal.executor,
+            taskClass: 'goal-exec',
+            inputTokens: result.usage.inputTokens,
+            outputTokens: result.usage.outputTokens,
+            ok: result.ok,
+            ...(result.usage.costUsd !== undefined ? { costUsd: result.usage.costUsd } : {}),
+          })
+        }
 
         if (abort.signal.aborted) {
           goal.status = 'stopped'

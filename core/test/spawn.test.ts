@@ -23,6 +23,20 @@ function makeSpec(script: string, overrides: Partial<SpawnSpec> = {}) {
   return { events, spec }
 }
 
+describe('runCli usage propagation', () => {
+  it('surfaces the last parsed usage on the result', async () => {
+    const { spec } = makeSpec('console.log("done")', {
+      parseLine: (line) => ({
+        kind: 'output',
+        text: line,
+        usage: { inputTokens: 7, outputTokens: 3 },
+      }),
+    })
+    const result = await runCli(spec)
+    expect(result.usage).toEqual({ inputTokens: 7, outputTokens: 3 })
+  })
+})
+
 describe('runCli stall watchdog', () => {
   it('kills a silent process after the inactivity timeout', async () => {
     const { events, spec } = makeSpec('setInterval(() => {}, 1000)', {

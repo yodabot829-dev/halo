@@ -12,6 +12,8 @@ export interface CallRecord {
   outputTokens: number
   ok: boolean
   status?: CallStatus
+  /** Real dollar cost when the caller reports one (e.g. claude CLI result). */
+  costUsd?: number
 }
 
 export interface ProviderTotals {
@@ -45,10 +47,13 @@ export class Meter {
       );
       CREATE INDEX IF NOT EXISTS idx_calls_provider_ts ON calls(provider, ts);
     `)
-    // Additive migration for pre-status databases.
+    // Additive migrations for pre-status / pre-cost databases.
     const cols = this.db.prepare('PRAGMA table_info(calls)').all() as { name: string }[]
     if (!cols.some((c) => c.name === 'status')) {
       this.db.exec("ALTER TABLE calls ADD COLUMN status TEXT NOT NULL DEFAULT 'ok'")
+    }
+    if (!cols.some((c) => c.name === 'cost_usd')) {
+      this.db.exec('ALTER TABLE calls ADD COLUMN cost_usd REAL NOT NULL DEFAULT 0')
     }
   }
 
@@ -56,8 +61,8 @@ export class Meter {
     const status: CallStatus = call.status ?? (call.ok ? 'ok' : 'error')
     this.db
       .prepare(
-        `INSERT INTO calls (ts, provider, model, task_class, input_tokens, output_tokens, ok, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO calls (ts, provider, model, task_class, input_tokens, output_tokens, ok, status, cost_usd)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         ts,
@@ -68,7 +73,19 @@ export class Meter {
         call.outputTokens,
         call.ok ? 1 : 0,
         status,
+        call.costUsd ?? 0,
       )
+  }
+
+  /** Total reported dollar cost per provider since a timestamp. */
+  costSince(sinceTs: number): Map<string, number> {
+    const rows = this.db
+      .prepare(
+        `SELECT provider, COALESCE(SUM(cost_usd), 0) AS cost
+         FROM calls WHERE ts >= ? GROUP BY provider`,
+      )
+      .all(sinceTs) as { provider: string; cost: number }[]
+    return new Map(rows.map((r) => [r.provider, r.cost]))
   }
 
   /** Total tokens (in+out) per provider since a timestamp — budget burn. */

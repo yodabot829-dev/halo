@@ -104,10 +104,12 @@ export function runCli(spec: SpawnSpec): Promise<ExecResult> {
       clearTimeout(inactivityTimer)
       clearTimeout(killTimer)
       spec.signal?.removeEventListener('abort', onAbort)
+      const usage = [...events].reverse().find((e) => e.usage)?.usage
       resolvePromise({
         ok: exitCode === 0,
         output: spec.finalOutput(events, rawTail),
         exitCode,
+        ...(usage ? { usage } : {}),
       })
     }
 
