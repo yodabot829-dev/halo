@@ -21,6 +21,8 @@ export interface EngineDeps {
   judge: Judge
   maxIterations: number
   stepTimeoutMs: number
+  /** Max goals running at once across all projects. */
+  maxConcurrent: number
 }
 
 function buildTaskPrompt(goal: Goal, feedback: string | null): string {
@@ -44,7 +46,7 @@ function buildTaskPrompt(goal: Goal, feedback: string | null): string {
  * or a human stops it. Goal files are updated at every step. */
 export class GoalEngine {
   private readonly deps: EngineDeps
-  private readonly running = new Map<string, AbortController>()
+  private readonly running = new Map<string, { abort: AbortController; project: string }>()
   private readonly listeners = new Map<string, Set<(e: GoalEvent) => void>>()
 
   constructor(deps: EngineDeps) {
@@ -69,14 +71,15 @@ export class GoalEngine {
   }
 
   stop(id: string): boolean {
-    const abort = this.running.get(id)
-    if (!abort) return false
-    abort.abort()
+    const entry = this.running.get(id)
+    if (!entry) return false
+    entry.abort.abort()
     return true
   }
 
   async run(id: string): Promise<Goal> {
-    const { store, executors, projects, judge, maxIterations, stepTimeoutMs } = this.deps
+    const { store, executors, projects, judge, maxIterations, stepTimeoutMs, maxConcurrent } =
+      this.deps
     const goal = store.get(id)
     if (!goal) throw new Error(`Unknown goal "${id}"`)
     if (this.running.has(id)) throw new Error(`Goal "${id}" is already running`)
@@ -87,8 +90,19 @@ export class GoalEngine {
     if (!executor) throw new Error(`Unknown executor "${goal.executor}"`)
     if (!executor.available()) throw new Error(`Executor "${goal.executor}" is not installed`)
 
+    if (this.running.size >= maxConcurrent) {
+      throw new Error(
+        `Goal concurrency limit reached (${this.running.size}/${maxConcurrent} running) — stop a goal or raise goals.maxConcurrent`,
+      )
+    }
+    for (const [otherId, other] of this.running) {
+      if (other.project === goal.project) {
+        throw new Error(`Project "${goal.project}" already has goal "${otherId}" running`)
+      }
+    }
+
     const abort = new AbortController()
-    this.running.set(id, abort)
+    this.running.set(id, { abort, project: goal.project })
     goal.status = 'running'
     this.emit(goal, { kind: 'status', text: `running with ${executor.name} in ${goal.project}` })
 

@@ -66,6 +66,7 @@ const goalEngine = new GoalEngine({
       : makeLlmJudge(registry, config, meter),
   maxIterations: config.goals.maxIterations,
   stepTimeoutMs: config.goals.stepTimeoutMinutes * 60_000,
+  maxConcurrent: config.goals.maxConcurrent,
 })
 
 const runLog = new RunLog(resolve(config.vault.path, config.runsDir))
