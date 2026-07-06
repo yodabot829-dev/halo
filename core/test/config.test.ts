@@ -63,6 +63,12 @@ describe('goals config', () => {
     expect(config.goals.inactivityTimeoutMinutes).toBe(10)
   })
 
+  it('defaults completion notifications to on', () => {
+    const config = parseConfig(VALID)
+    expect(config.goals.notify).toBe(true)
+    expect(parseConfig(`${VALID}\ngoals:\n  notify: false\n`).goals.notify).toBe(false)
+  })
+
   it('accepts an explicit maxConcurrent and rejects zero', () => {
     expect(parseConfig(`${VALID}\ngoals:\n  maxConcurrent: 2\n`).goals.maxConcurrent).toBe(2)
     expect(() => parseConfig(`${VALID}\ngoals:\n  maxConcurrent: 0\n`)).toThrow()

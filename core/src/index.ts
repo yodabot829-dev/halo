@@ -11,6 +11,7 @@ import type { Executor } from './executor/types.js'
 import { GoalEngine } from './goals/engine.js'
 import { GoalStore } from './goals/goal-file.js'
 import { makeLlmJudge, makePanelJudge } from './goals/judge.js'
+import { makeOsascriptNotifier } from './goals/notify.js'
 import { reconcileStrandedGoals } from './goals/reconcile.js'
 import { makeOllamaEmbedder } from './memory/embed.js'
 import { MemoryService } from './memory/service.js'
@@ -70,6 +71,7 @@ const goalEngine = new GoalEngine({
   maxConcurrent: config.goals.maxConcurrent,
   inactivityTimeoutMs: config.goals.inactivityTimeoutMinutes * 60_000,
   meter,
+  ...(config.goals.notify ? { notify: makeOsascriptNotifier() } : {}),
 })
 
 // node-pty is a native module (rebuild caveat, like better-sqlite3); loaded
