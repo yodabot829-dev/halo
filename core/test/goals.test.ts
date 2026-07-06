@@ -26,18 +26,32 @@ function fakeExecutor(results: ExecResult[]): Executor {
 
 const okResult: ExecResult = { ok: true, output: 'did the work', exitCode: 0 }
 
-function makeEngine(dir: string, executor: Executor, verdicts: Verdict[]) {
+function makeEngine(
+  dir: string,
+  executor: Executor,
+  verdicts: Verdict[],
+  opts: { maxConcurrent?: number; projects?: Record<string, string> } = {},
+) {
   let judgeCall = 0
   const store = new GoalStore(dir)
   const engine = new GoalEngine({
     store,
     executors: new Map([['fake', executor]]),
-    projects: { demo: dir },
+    projects: opts.projects ?? { demo: dir },
     judge: async () => verdicts[Math.min(judgeCall++, verdicts.length - 1)]!,
     maxIterations: 3,
     stepTimeoutMs: 5000,
+    maxConcurrent: opts.maxConcurrent ?? 1,
   })
   return { store, engine }
+}
+
+function slowExecutor(delayMs: number): Executor {
+  return {
+    name: 'fake',
+    available: () => true,
+    execute: () => new Promise((r) => setTimeout(() => r(okResult), delayMs)),
+  }
 }
 
 describe('goal file roundtrip', () => {
@@ -105,15 +119,47 @@ describe('GoalEngine', () => {
   })
 
   it('refuses concurrent runs of the same goal', async () => {
-    const slow: Executor = {
-      name: 'fake',
-      available: () => true,
-      execute: () => new Promise((r) => setTimeout(() => r(okResult), 200)),
-    }
-    const { store, engine } = makeEngine(dir, slow, [{ met: true, feedback: 'ok' }])
+    const { store, engine } = makeEngine(dir, slowExecutor(200), [{ met: true, feedback: 'ok' }])
     const goal = store.create(GOAL_INPUT)
     const first = engine.run(goal.id)
     await expect(engine.run(goal.id)).rejects.toThrow(/already running/)
+    await first
+  })
+
+  it('rejects a second goal when maxConcurrent is reached', async () => {
+    const { store, engine } = makeEngine(dir, slowExecutor(200), [{ met: true, feedback: 'ok' }], {
+      maxConcurrent: 1,
+      projects: { demo: dir, other: dir },
+    })
+    const a = store.create(GOAL_INPUT)
+    const b = store.create({ ...GOAL_INPUT, title: 'Second goal', project: 'other' })
+    const first = engine.run(a.id)
+    await expect(engine.run(b.id)).rejects.toThrow(/concurrency limit reached \(1\/1 running\)/)
+    await first
+  })
+
+  it('allows parallel goals in different projects within the cap', async () => {
+    const { store, engine } = makeEngine(dir, slowExecutor(50), [{ met: true, feedback: 'ok' }], {
+      maxConcurrent: 2,
+      projects: { demo: dir, other: dir },
+    })
+    const a = store.create(GOAL_INPUT)
+    const b = store.create({ ...GOAL_INPUT, title: 'Second goal', project: 'other' })
+    const [first, second] = await Promise.all([engine.run(a.id), engine.run(b.id)])
+    expect(first.status).toBe('done')
+    expect(second.status).toBe('done')
+  })
+
+  it('rejects a goal whose project already has one running', async () => {
+    const { store, engine } = makeEngine(dir, slowExecutor(200), [{ met: true, feedback: 'ok' }], {
+      maxConcurrent: 2,
+    })
+    const a = store.create(GOAL_INPUT)
+    const b = store.create({ ...GOAL_INPUT, title: 'Same project goal' })
+    const first = engine.run(a.id)
+    await expect(engine.run(b.id)).rejects.toThrow(
+      `Project "demo" already has goal "${a.id}" running`,
+    )
     await first
   })
 })

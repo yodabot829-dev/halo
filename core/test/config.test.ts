@@ -52,6 +52,18 @@ models: []
   })
 })
 
+describe('goals config', () => {
+  it('defaults maxConcurrent to 1', () => {
+    const config = parseConfig(VALID)
+    expect(config.goals.maxConcurrent).toBe(1)
+  })
+
+  it('accepts an explicit maxConcurrent and rejects zero', () => {
+    expect(parseConfig(`${VALID}\ngoals:\n  maxConcurrent: 2\n`).goals.maxConcurrent).toBe(2)
+    expect(() => parseConfig(`${VALID}\ngoals:\n  maxConcurrent: 0\n`)).toThrow()
+  })
+})
+
 describe('terminal config', () => {
   it('defaults the terminal section to a Claude session', () => {
     const config = parseConfig(VALID)

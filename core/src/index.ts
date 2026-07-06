@@ -67,6 +67,7 @@ const goalEngine = new GoalEngine({
       : makeLlmJudge(registry, config, meter),
   maxIterations: config.goals.maxIterations,
   stepTimeoutMs: config.goals.stepTimeoutMinutes * 60_000,
+  maxConcurrent: config.goals.maxConcurrent,
 })
 
 // node-pty is a native module (rebuild caveat, like better-sqlite3); loaded
