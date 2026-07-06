@@ -59,6 +59,28 @@ describe('Meter', () => {
     ])
   })
 
+  it('persists cost per call and sums it per provider', () => {
+    meter.record({
+      provider: 'claude-code',
+      model: 'claude-sonnet-4-5',
+      taskClass: 'goal-exec',
+      inputTokens: 10,
+      outputTokens: 5,
+      ok: true,
+      costUsd: 0.25,
+    })
+    meter.record({
+      provider: 'claude-code',
+      model: 'claude-sonnet-4-5',
+      taskClass: 'goal-exec',
+      inputTokens: 10,
+      outputTokens: 5,
+      ok: true,
+      costUsd: 0.5,
+    })
+    expect(meter.costSince(0).get('claude-code')).toBeCloseTo(0.75)
+  })
+
   it('records failed calls too', () => {
     meter.record({
       provider: 'a',
