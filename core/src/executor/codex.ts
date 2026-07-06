@@ -24,6 +24,7 @@ export class CodexExecutor implements Executor {
       args: ['exec', ...this.extraArgs, task],
       cwd: opts.cwd,
       timeoutMs: opts.timeoutMs,
+      inactivityTimeoutMs: opts.inactivityTimeoutMs,
       signal: opts.signal,
       parseLine: (line) => ({ kind: 'output', text: line }),
       finalOutput: (events) =>
