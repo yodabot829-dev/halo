@@ -33,6 +33,8 @@ export interface EngineDeps {
   inactivityTimeoutMs?: number
   /** Records executor token/cost usage (taskClass goal-exec). Off when unset. */
   meter?: UsageRecorder
+  /** Fired once when a goal finishes as done or failed (not stopped). */
+  notify?: (goal: Goal) => void
 }
 
 function buildTaskPrompt(goal: Goal, feedback: string | null, goalFilePath: string): string {
@@ -185,6 +187,7 @@ export class GoalEngine {
     } finally {
       this.running.delete(id)
       store.save(goal)
+      if (goal.status === 'done' || goal.status === 'failed') this.deps.notify?.(goal)
     }
   }
 }

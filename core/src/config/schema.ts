@@ -112,6 +112,8 @@ export const configSchema = z.object({
       // 'panel' = three review lenses must unanimously approve (stricter,
       // ~3× judge cost); 'single' = one reviewer.
       judge: z.enum(['single', 'panel']).default('single'),
+      // macOS notification when a goal finishes as done/failed.
+      notify: z.boolean().default(true),
     })
     .prefault({}),
   // One-click actions (video-style command center): each is a named prompt
