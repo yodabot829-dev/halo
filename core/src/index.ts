@@ -11,6 +11,7 @@ import type { Executor } from './executor/types.js'
 import { GoalEngine } from './goals/engine.js'
 import { GoalStore } from './goals/goal-file.js'
 import { makeLlmJudge, makePanelJudge } from './goals/judge.js'
+import { reconcileStrandedGoals } from './goals/reconcile.js'
 import { makeOllamaEmbedder } from './memory/embed.js'
 import { MemoryService } from './memory/service.js'
 import { MemoryStore } from './memory/store.js'
@@ -52,6 +53,9 @@ const executors = new Map<string, Executor>([
   ['codex', new CodexExecutor(config.executors.codex.command, config.executors.codex.args)],
 ])
 const goalStore = new GoalStore(resolve(config.vault.path, config.goals.dir))
+// A previous daemon crash/restart leaves goal files at status:running with no
+// engine attached — reconcile before anything can start new work.
+const strandedGoals = reconcileStrandedGoals(goalStore)
 const goalEngine = new GoalEngine({
   store: goalStore,
   executors,
@@ -88,6 +92,13 @@ const app = await buildApp({
   authToken: process.env['HALO_TOKEN'],
   webDist: resolve(here, '../../web/dist'),
 })
+
+if (strandedGoals.length > 0) {
+  app.log.warn(
+    { goals: strandedGoals.map((g) => g.id) },
+    'stranded running goals marked stopped at boot',
+  )
+}
 
 const scanResult = memory.scan()
 app.log.info(
