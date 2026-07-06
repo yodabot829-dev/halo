@@ -27,18 +27,24 @@ export interface EngineDeps {
   inactivityTimeoutMs?: number
 }
 
-function buildTaskPrompt(goal: Goal, feedback: string | null): string {
+function buildTaskPrompt(goal: Goal, feedback: string | null, goalFilePath: string): string {
   const parts = [
     `You are completing a goal in this repository.`,
     `## Objective\n${goal.objective}`,
     `## Success criteria\n${goal.criteria.map((c) => `- ${c}`).join('\n')}`,
   ]
+  if (goal.plan || goal.doneSoFar) {
+    parts.push(
+      `## Your checkpoint from the previous iteration\n### Plan\n${goal.plan || '(none)'}\n### Done so far\n${goal.doneSoFar || '(none)'}`,
+    )
+  }
   if (feedback) {
     parts.push(
       `## Reviewer feedback on the previous attempt\n${feedback}\nAddress this feedback specifically.`,
     )
   }
   parts.push(
+    `Maintain your checkpoint in the goal file at ${goalFilePath}: keep its "## Plan" and "## Done so far" sections up to date (edit only those two sections) so the next iteration can resume without losing context.`,
     'Work directly in the repo. When finished, summarise concretely what you changed and how each success criterion is met.',
   )
   return parts.join('\n\n')
@@ -67,6 +73,13 @@ export class GoalEngine {
   }
 
   private emit(goal: Goal, event: GoalEvent): void {
+    // The executor edits the goal file's checkpoint sections while we hold a
+    // stale copy — re-read them so our saves never clobber its progress.
+    const onDisk = this.deps.store.get(goal.id)
+    if (onDisk) {
+      goal.plan = onDisk.plan
+      goal.doneSoFar = onDisk.doneSoFar
+    }
     goal.log.push(`${new Date().toISOString()} [${event.kind}] ${event.text.slice(0, 500).replace(/\n/g, ' ')}`)
     this.deps.store.save(goal)
     for (const fn of this.listeners.get(goal.id) ?? []) fn(event)
@@ -114,7 +127,7 @@ export class GoalEngine {
         goal.iterations = i
         this.emit(goal, { kind: 'status', text: `iteration ${i}/${maxIterations}` })
 
-        const result = await executor.execute(buildTaskPrompt(goal, feedback), {
+        const result = await executor.execute(buildTaskPrompt(goal, feedback, store.pathFor(id)), {
           cwd,
           signal: abort.signal,
           timeoutMs: stepTimeoutMs,

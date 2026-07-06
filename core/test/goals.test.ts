@@ -64,10 +64,32 @@ describe('goal file roundtrip', () => {
       executor: 'claude-code',
       objective: 'Do the thing.',
       criteria: ['a', 'b'],
+      plan: 'refactor parser then add tests',
+      doneSoFar: 'parser refactored, tests pending',
       iterations: 2,
       log: ['one', 'two'],
     }
     expect(parseGoal('fix-it', serializeGoal(goal))).toEqual(goal)
+  })
+
+  it('parses legacy goal files without checkpoint sections', () => {
+    const legacy = [
+      '---',
+      'title: Old goal',
+      'status: pending',
+      'project: demo',
+      'executor: claude-code',
+      'iterations: 0',
+      '---',
+      '## Objective\nDo it.',
+      '',
+      '## Success criteria\n- done',
+      '',
+      '## Log\n',
+    ].join('\n')
+    const parsed = parseGoal('old-goal', legacy)
+    expect(parsed.plan).toBe('')
+    expect(parsed.doneSoFar).toBe('')
   })
 })
 
@@ -161,6 +183,59 @@ describe('GoalEngine', () => {
       `Project "demo" already has goal "${a.id}" running`,
     )
     await first
+  })
+
+  it('tells the executor to maintain the checkpoint in the goal file', async () => {
+    const prompts: string[] = []
+    const executor: Executor = {
+      name: 'fake',
+      available: () => true,
+      execute: async (task) => {
+        prompts.push(task)
+        return okResult
+      },
+    }
+    const { store, engine } = makeEngine(dir, executor, [{ met: true, feedback: 'ok' }])
+    const goal = store.create(GOAL_INPUT)
+    await engine.run(goal.id)
+    expect(prompts[0]).toContain(store.pathFor(goal.id))
+    expect(prompts[0]).toContain('## Plan')
+    expect(prompts[0]).toContain('## Done so far')
+  })
+
+  it('carries the executor-written checkpoint into the next iteration prompt', async () => {
+    const prompts: string[] = []
+    const store = new GoalStore(dir)
+    const goal = store.create(GOAL_INPUT)
+    const executor: Executor = {
+      name: 'fake',
+      available: () => true,
+      execute: async (task) => {
+        prompts.push(task)
+        if (prompts.length === 1) {
+          // Simulate the executor editing the goal file's checkpoint sections.
+          const onDisk = store.get(goal.id)!
+          store.save({
+            ...onDisk,
+            plan: 'stabilise the auth mock first',
+            doneSoFar: 'reproduced the flake locally',
+          })
+        }
+        return okResult
+      },
+    }
+    const { engine } = makeEngine(dir, executor, [
+      { met: false, feedback: 'keep going' },
+      { met: true, feedback: 'ok' },
+    ])
+    const finished = await engine.run(goal.id)
+    expect(finished.status).toBe('done')
+    expect(prompts).toHaveLength(2)
+    expect(prompts[1]).toContain('stabilise the auth mock first')
+    expect(prompts[1]).toContain('reproduced the flake locally')
+    // Engine saves along the way must not clobber the executor's checkpoint.
+    expect(store.get(goal.id)?.plan).toBe('stabilise the auth mock first')
+    expect(store.get(goal.id)?.doneSoFar).toBe('reproduced the flake locally')
   })
 })
 

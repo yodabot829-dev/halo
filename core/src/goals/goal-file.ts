@@ -14,6 +14,10 @@ export interface Goal {
   executor: string
   objective: string
   criteria: string[]
+  /** Executor-maintained checkpoint: the current plan for the goal. */
+  plan: string
+  /** Executor-maintained checkpoint: progress so far — survives iterations and restarts. */
+  doneSoFar: string
   iterations: number
   log: string[]
 }
@@ -22,6 +26,8 @@ export function serializeGoal(goal: Goal): string {
   const body = [
     `## Objective\n${goal.objective}`,
     `## Success criteria\n${goal.criteria.map((c) => `- ${c}`).join('\n')}`,
+    `## Plan\n${goal.plan}`,
+    `## Done so far\n${goal.doneSoFar}`,
     `## Log\n${goal.log.map((l) => `- ${l}`).join('\n')}`,
   ].join('\n\n')
   return matter.stringify(`${body}\n`, {
@@ -58,6 +64,8 @@ export function parseGoal(id: string, raw: string): Goal {
     iterations: Number(meta['iterations'] ?? 0),
     objective: section(content, 'Objective'),
     criteria: listItems(section(content, 'Success criteria')),
+    plan: section(content, 'Plan'),
+    doneSoFar: section(content, 'Done so far'),
     log: listItems(section(content, 'Log')),
   }
 }
@@ -79,15 +87,29 @@ export class GoalStore {
     return parseGoal(id, readFileSync(abs, 'utf8'))
   }
 
+  /** Absolute path of a goal's markdown file — handed to the executor so it
+   * can maintain the checkpoint sections. */
+  pathFor(id: string): string {
+    return join(this.dir, `${id}.md`)
+  }
+
   save(goal: Goal): void {
     mkdirSync(this.dir, { recursive: true })
     writeFileSync(join(this.dir, `${goal.id}.md`), serializeGoal(goal), 'utf8')
   }
 
-  create(input: Omit<Goal, 'id' | 'status' | 'iterations' | 'log'>): Goal {
+  create(input: Omit<Goal, 'id' | 'status' | 'iterations' | 'log' | 'plan' | 'doneSoFar'>): Goal {
     let id = slugify(input.title)
     for (let i = 2; this.get(id); i++) id = `${slugify(input.title)}-${i}`
-    const goal: Goal = { ...input, id, status: 'pending', iterations: 0, log: [] }
+    const goal: Goal = {
+      ...input,
+      id,
+      status: 'pending',
+      plan: '',
+      doneSoFar: '',
+      iterations: 0,
+      log: [],
+    }
     this.save(goal)
     return goal
   }
