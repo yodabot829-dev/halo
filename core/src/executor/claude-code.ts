@@ -47,6 +47,7 @@ export class ClaudeCodeExecutor implements Executor {
       args: ['-p', task, '--output-format', 'stream-json', '--verbose', ...this.extraArgs],
       cwd: opts.cwd,
       timeoutMs: opts.timeoutMs,
+      inactivityTimeoutMs: opts.inactivityTimeoutMs,
       signal: opts.signal,
       parseLine: parseClaudeLine,
       finalOutput: (events) => {

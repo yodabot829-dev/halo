@@ -14,6 +14,8 @@ export interface ExecuteOptions {
   cwd: string
   signal?: AbortSignal
   timeoutMs: number
+  /** Kill the process if it produces no output for this long. Off when unset. */
+  inactivityTimeoutMs?: number
   onEvent?: (event: ExecEvent) => void
 }
 

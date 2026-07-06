@@ -68,6 +68,7 @@ const goalEngine = new GoalEngine({
   maxIterations: config.goals.maxIterations,
   stepTimeoutMs: config.goals.stepTimeoutMinutes * 60_000,
   maxConcurrent: config.goals.maxConcurrent,
+  inactivityTimeoutMs: config.goals.inactivityTimeoutMinutes * 60_000,
 })
 
 // node-pty is a native module (rebuild caveat, like better-sqlite3); loaded

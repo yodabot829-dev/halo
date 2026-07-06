@@ -23,6 +23,8 @@ export interface EngineDeps {
   stepTimeoutMs: number
   /** Max goals running at once across all projects. */
   maxConcurrent: number
+  /** Kill an executor step that produces no output for this long. Off when unset. */
+  inactivityTimeoutMs?: number
 }
 
 function buildTaskPrompt(goal: Goal, feedback: string | null): string {
@@ -116,6 +118,7 @@ export class GoalEngine {
           cwd,
           signal: abort.signal,
           timeoutMs: stepTimeoutMs,
+          inactivityTimeoutMs: this.deps.inactivityTimeoutMs,
           onEvent: (e) => this.emit(goal, { kind: e.kind === 'error' ? 'error' : 'output', text: e.text }),
         })
 

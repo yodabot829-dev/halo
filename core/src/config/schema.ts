@@ -105,6 +105,8 @@ export const configSchema = z.object({
       dir: z.string().default('OS/Goals'),
       maxIterations: z.number().int().min(1).max(10).default(3),
       stepTimeoutMinutes: z.number().int().min(1).max(240).default(30),
+      // Kill an executor step that goes silent for this long (stall watchdog).
+      inactivityTimeoutMinutes: z.number().int().min(1).max(240).default(10),
       // Max goals running at once (each one is a full executor session).
       maxConcurrent: z.number().int().min(1).max(10).default(1),
       // 'panel' = three review lenses must unanimously approve (stricter,
