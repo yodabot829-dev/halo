@@ -16,6 +16,7 @@ import { isLoopback, tokenMatches } from './auth.js'
 import { registerActionRoutes } from './routes/actions.js'
 import { registerChatRoute } from './routes/chat.js'
 import { registerGoalRoutes } from './routes/goals.js'
+import { registerLoopRoutes } from './routes/loops.js'
 import { registerMemoryRoutes } from './routes/memory.js'
 import { registerModelRoutes } from './routes/models.js'
 import { registerProjectRoutes } from './routes/projects.js'
@@ -82,6 +83,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   registerVoiceRoutes(app, ctx)
   registerProjectRoutes(app, ctx)
   registerActionRoutes(app, ctx)
+  registerLoopRoutes(app, ctx)
 
   if (ctx.webDist && existsSync(ctx.webDist)) {
     await app.register(fastifyStatic, { root: ctx.webDist })
