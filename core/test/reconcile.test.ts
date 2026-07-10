@@ -14,6 +14,8 @@ function makeGoal(id: string, status: Goal['status']): Goal {
     executor: 'claude-code',
     objective: 'Do the thing.',
     criteria: ['it is done'],
+    plan: '',
+    doneSoFar: '',
     iterations: 1,
     log: ['2026-07-01T00:00:00.000Z [status] iteration 1/3'],
   }
