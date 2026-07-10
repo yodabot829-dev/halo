@@ -1,6 +1,15 @@
+/** Token/cost usage reported by an executor CLI (claude stream-json result). */
+export interface ExecUsage {
+  inputTokens: number
+  outputTokens: number
+  costUsd?: number
+  model?: string
+}
+
 export interface ExecEvent {
   kind: 'started' | 'output' | 'error'
   text: string
+  usage?: ExecUsage
 }
 
 export interface ExecResult {
@@ -8,12 +17,15 @@ export interface ExecResult {
   /** Final assistant output (result text), not the full transcript. */
   output: string
   exitCode: number | null
+  usage?: ExecUsage
 }
 
 export interface ExecuteOptions {
   cwd: string
   signal?: AbortSignal
   timeoutMs: number
+  /** Kill the process if it produces no output for this long. Off when unset. */
+  inactivityTimeoutMs?: number
   onEvent?: (event: ExecEvent) => void
 }
 

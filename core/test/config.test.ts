@@ -52,6 +52,28 @@ models: []
   })
 })
 
+describe('goals config', () => {
+  it('defaults maxConcurrent to 1', () => {
+    const config = parseConfig(VALID)
+    expect(config.goals.maxConcurrent).toBe(1)
+  })
+
+  it('defaults the stall watchdog to 10 minutes', () => {
+    const config = parseConfig(VALID)
+    expect(config.goals.inactivityTimeoutMinutes).toBe(10)
+  })
+
+  it('defaults completion notifications to on', () => {
+    const config = parseConfig(VALID)
+    expect(config.goals.notify).toBe(true)
+    expect(parseConfig(`${VALID}\ngoals:\n  notify: false\n`).goals.notify).toBe(false)
+  })
+
+  it('accepts an explicit maxConcurrent and rejects zero', () => {
+    expect(parseConfig(`${VALID}\ngoals:\n  maxConcurrent: 2\n`).goals.maxConcurrent).toBe(2)
+    expect(() => parseConfig(`${VALID}\ngoals:\n  maxConcurrent: 0\n`)).toThrow()
+  })
+})
 describe('parseModelRef', () => {
   it('splits on the first slash only', () => {
     expect(parseModelRef('synthetic/hf:MiniMaxAI/MiniMax-M2.5')).toEqual({

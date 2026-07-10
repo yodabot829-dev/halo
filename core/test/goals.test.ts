@@ -6,6 +6,7 @@ import { parseClaudeLine } from '../src/executor/claude-code.js'
 import type { Executor, ExecResult } from '../src/executor/types.js'
 import { GoalEngine, type Verdict } from '../src/goals/engine.js'
 import { GoalStore, parseGoal, serializeGoal, type Goal } from '../src/goals/goal-file.js'
+import type { CallRecord } from '../src/meter/meter.js'
 
 const GOAL_INPUT = {
   title: 'Fix the flaky test',
@@ -26,18 +27,32 @@ function fakeExecutor(results: ExecResult[]): Executor {
 
 const okResult: ExecResult = { ok: true, output: 'did the work', exitCode: 0 }
 
-function makeEngine(dir: string, executor: Executor, verdicts: Verdict[]) {
+function makeEngine(
+  dir: string,
+  executor: Executor,
+  verdicts: Verdict[],
+  opts: { maxConcurrent?: number; projects?: Record<string, string> } = {},
+) {
   let judgeCall = 0
   const store = new GoalStore(dir)
   const engine = new GoalEngine({
     store,
     executors: new Map([['fake', executor]]),
-    projects: { demo: dir },
+    projects: opts.projects ?? { demo: dir },
     judge: async () => verdicts[Math.min(judgeCall++, verdicts.length - 1)]!,
     maxIterations: 3,
     stepTimeoutMs: 5000,
+    maxConcurrent: opts.maxConcurrent ?? 1,
   })
   return { store, engine }
+}
+
+function slowExecutor(delayMs: number): Executor {
+  return {
+    name: 'fake',
+    available: () => true,
+    execute: () => new Promise((r) => setTimeout(() => r(okResult), delayMs)),
+  }
 }
 
 describe('goal file roundtrip', () => {
@@ -50,10 +65,32 @@ describe('goal file roundtrip', () => {
       executor: 'claude-code',
       objective: 'Do the thing.',
       criteria: ['a', 'b'],
+      plan: 'refactor parser then add tests',
+      doneSoFar: 'parser refactored, tests pending',
       iterations: 2,
       log: ['one', 'two'],
     }
     expect(parseGoal('fix-it', serializeGoal(goal))).toEqual(goal)
+  })
+
+  it('parses legacy goal files without checkpoint sections', () => {
+    const legacy = [
+      '---',
+      'title: Old goal',
+      'status: pending',
+      'project: demo',
+      'executor: claude-code',
+      'iterations: 0',
+      '---',
+      '## Objective\nDo it.',
+      '',
+      '## Success criteria\n- done',
+      '',
+      '## Log\n',
+    ].join('\n')
+    const parsed = parseGoal('old-goal', legacy)
+    expect(parsed.plan).toBe('')
+    expect(parsed.doneSoFar).toBe('')
   })
 })
 
@@ -105,16 +142,101 @@ describe('GoalEngine', () => {
   })
 
   it('refuses concurrent runs of the same goal', async () => {
-    const slow: Executor = {
-      name: 'fake',
-      available: () => true,
-      execute: () => new Promise((r) => setTimeout(() => r(okResult), 200)),
-    }
-    const { store, engine } = makeEngine(dir, slow, [{ met: true, feedback: 'ok' }])
+    const { store, engine } = makeEngine(dir, slowExecutor(200), [{ met: true, feedback: 'ok' }])
     const goal = store.create(GOAL_INPUT)
     const first = engine.run(goal.id)
     await expect(engine.run(goal.id)).rejects.toThrow(/already running/)
     await first
+  })
+
+  it('rejects a second goal when maxConcurrent is reached', async () => {
+    const { store, engine } = makeEngine(dir, slowExecutor(200), [{ met: true, feedback: 'ok' }], {
+      maxConcurrent: 1,
+      projects: { demo: dir, other: dir },
+    })
+    const a = store.create(GOAL_INPUT)
+    const b = store.create({ ...GOAL_INPUT, title: 'Second goal', project: 'other' })
+    const first = engine.run(a.id)
+    await expect(engine.run(b.id)).rejects.toThrow(/concurrency limit reached \(1\/1 running\)/)
+    await first
+  })
+
+  it('allows parallel goals in different projects within the cap', async () => {
+    const { store, engine } = makeEngine(dir, slowExecutor(50), [{ met: true, feedback: 'ok' }], {
+      maxConcurrent: 2,
+      projects: { demo: dir, other: dir },
+    })
+    const a = store.create(GOAL_INPUT)
+    const b = store.create({ ...GOAL_INPUT, title: 'Second goal', project: 'other' })
+    const [first, second] = await Promise.all([engine.run(a.id), engine.run(b.id)])
+    expect(first.status).toBe('done')
+    expect(second.status).toBe('done')
+  })
+
+  it('rejects a goal whose project already has one running', async () => {
+    const { store, engine } = makeEngine(dir, slowExecutor(200), [{ met: true, feedback: 'ok' }], {
+      maxConcurrent: 2,
+    })
+    const a = store.create(GOAL_INPUT)
+    const b = store.create({ ...GOAL_INPUT, title: 'Same project goal' })
+    const first = engine.run(a.id)
+    await expect(engine.run(b.id)).rejects.toThrow(
+      `Project "demo" already has goal "${a.id}" running`,
+    )
+    await first
+  })
+
+  it('tells the executor to maintain the checkpoint in the goal file', async () => {
+    const prompts: string[] = []
+    const executor: Executor = {
+      name: 'fake',
+      available: () => true,
+      execute: async (task) => {
+        prompts.push(task)
+        return okResult
+      },
+    }
+    const { store, engine } = makeEngine(dir, executor, [{ met: true, feedback: 'ok' }])
+    const goal = store.create(GOAL_INPUT)
+    await engine.run(goal.id)
+    expect(prompts[0]).toContain(store.pathFor(goal.id))
+    expect(prompts[0]).toContain('## Plan')
+    expect(prompts[0]).toContain('## Done so far')
+  })
+
+  it('carries the executor-written checkpoint into the next iteration prompt', async () => {
+    const prompts: string[] = []
+    const store = new GoalStore(dir)
+    const goal = store.create(GOAL_INPUT)
+    const executor: Executor = {
+      name: 'fake',
+      available: () => true,
+      execute: async (task) => {
+        prompts.push(task)
+        if (prompts.length === 1) {
+          // Simulate the executor editing the goal file's checkpoint sections.
+          const onDisk = store.get(goal.id)!
+          store.save({
+            ...onDisk,
+            plan: 'stabilise the auth mock first',
+            doneSoFar: 'reproduced the flake locally',
+          })
+        }
+        return okResult
+      },
+    }
+    const { engine } = makeEngine(dir, executor, [
+      { met: false, feedback: 'keep going' },
+      { met: true, feedback: 'ok' },
+    ])
+    const finished = await engine.run(goal.id)
+    expect(finished.status).toBe('done')
+    expect(prompts).toHaveLength(2)
+    expect(prompts[1]).toContain('stabilise the auth mock first')
+    expect(prompts[1]).toContain('reproduced the flake locally')
+    // Engine saves along the way must not clobber the executor's checkpoint.
+    expect(store.get(goal.id)?.plan).toBe('stabilise the auth mock first')
+    expect(store.get(goal.id)?.doneSoFar).toBe('reproduced the flake locally')
   })
 })
 
@@ -132,8 +254,98 @@ describe('parseClaudeLine', () => {
     expect(parseClaudeLine(line)).toEqual({ kind: 'output', text: 'RESULT: all done' })
   })
 
+  it('extracts usage and cost from the result line', () => {
+    const line = JSON.stringify({
+      type: 'result',
+      result: 'all done',
+      total_cost_usd: 0.1234,
+      usage: {
+        input_tokens: 4,
+        cache_creation_input_tokens: 100,
+        cache_read_input_tokens: 200,
+        output_tokens: 50,
+      },
+      modelUsage: { 'claude-sonnet-4-5': {} },
+    })
+    expect(parseClaudeLine(line)).toEqual({
+      kind: 'output',
+      text: 'RESULT: all done',
+      usage: {
+        inputTokens: 304,
+        outputTokens: 50,
+        costUsd: 0.1234,
+        model: 'claude-sonnet-4-5',
+      },
+    })
+  })
+
+  it('omits usage when the result line has none', () => {
+    const line = JSON.stringify({ type: 'result', result: 'all done' })
+    expect(parseClaudeLine(line)).not.toHaveProperty('usage')
+  })
+
   it('drops noise and non-JSON', () => {
     expect(parseClaudeLine('not json')).toBeNull()
     expect(parseClaudeLine(JSON.stringify({ type: 'system' }))).toBeNull()
+  })
+})
+
+describe('executor metering', () => {
+  let dir: string
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'halo-goals-'))
+  })
+
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+  it('records executor usage to the meter as goal-exec', async () => {
+    const recorded: CallRecord[] = []
+    const usageResult: ExecResult = {
+      ...okResult,
+      usage: { inputTokens: 300, outputTokens: 40, costUsd: 0.05, model: 'claude-sonnet-4-5' },
+    }
+    const store = new GoalStore(dir)
+    const engine = new GoalEngine({
+      store,
+      executors: new Map([['fake', fakeExecutor([usageResult])]]),
+      projects: { demo: dir },
+      judge: async () => ({ met: true, feedback: 'ok' }),
+      maxIterations: 3,
+      stepTimeoutMs: 5000,
+      maxConcurrent: 1,
+      meter: { record: (call) => recorded.push(call) },
+    })
+    const goal = store.create(GOAL_INPUT)
+    await engine.run(goal.id)
+    expect(recorded).toEqual([
+      {
+        provider: 'fake',
+        model: 'claude-sonnet-4-5',
+        taskClass: 'goal-exec',
+        inputTokens: 300,
+        outputTokens: 40,
+        costUsd: 0.05,
+        ok: true,
+      },
+    ])
+  })
+
+  it('skips metering when the executor reports no usage', async () => {
+    const recorded: CallRecord[] = []
+    const store = new GoalStore(dir)
+    const engine = new GoalEngine({
+      store,
+      executors: new Map([['fake', fakeExecutor([okResult])]]),
+      projects: { demo: dir },
+      judge: async () => ({ met: true, feedback: 'ok' }),
+      maxIterations: 3,
+      stepTimeoutMs: 5000,
+      maxConcurrent: 1,
+      meter: { record: (call) => recorded.push(call) },
+    })
+    const goal = store.create(GOAL_INPUT)
+    await engine.run(goal.id)
+    expect(recorded).toEqual([])
   })
 })
