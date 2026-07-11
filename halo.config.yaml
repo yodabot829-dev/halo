@@ -12,7 +12,10 @@ vault:
   memoryDir: OS/Memory
   indexDirs: # extra vault folders indexed read-only
     - Claude Memory
-    - Projects
+    - projects
+    - wiki
+    - output
+    - inbox
 
 memory:
   embedModel: nomic-embed-text
@@ -108,6 +111,8 @@ projects:
   salesforce-accelerators: ~/.openclaw/workspace/yodaclaude/salesforce-accelerators
   gemmawatch: ~/.openclaw/workspace/yodaclaude/gemmawatch
   etsy-store: ~/.openclaw/workspace/yodaclaude/journeyforce # JFStudioTemplates Etsy pipeline
+  gardeners-mate: ~/.openclaw/workspace/yodaclaude/gardeners-mate # UK border-planner app (on-device catalogue + Worker/D1)
+  app-framework: ~/.openclaw/workspace/yodaclaude/app-framework # cloneable AI feature-app starter (create-app.sh)
   vault: ~/Documents/Openclaw yodabot # the Obsidian second brain itself
 
 executors:
