@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -40,10 +48,18 @@ describe('skill proposals', () => {
     expect(rows[0].what).toBe('Smoke-test a just-deployed Worker.')
   })
 
-  it('picks the newest audit file and flags existing skills', () => {
+  it('picks the newest audit file by mtime and flags existing skills', () => {
     writeFileSync(join(dirs.reportsDir, 'skill-audit-2026-07-10.md'), '| a | b | /old-one | c |')
     writeFileSync(join(dirs.reportsDir, 'skill-audit-2026-07-16.md'), REPORT)
+    const past = new Date(Date.now() - 60_000)
+    utimesSync(join(dirs.reportsDir, 'skill-audit-2026-07-10.md'), past, past)
     expect(latestAuditFile(dirs.reportsDir)).toContain('2026-07-16')
+
+    // same-day suffixed report written later must win despite sorting before ".md"
+    writeFileSync(join(dirs.reportsDir, 'skill-audit-2026-07-16-pm.md'), REPORT)
+    const future = new Date(Date.now() + 60_000)
+    utimesSync(join(dirs.reportsDir, 'skill-audit-2026-07-16-pm.md'), future, future)
+    expect(latestAuditFile(dirs.reportsDir)).toContain('-pm')
 
     mkdirSync(join(dirs.skillsDir, 'pr-babysit'), { recursive: true })
     writeFileSync(join(dirs.skillsDir, 'pr-babysit', 'SKILL.md'), 'x')

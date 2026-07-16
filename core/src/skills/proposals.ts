@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -27,14 +27,18 @@ export function defaultSkillDirs(): SkillDirs {
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]*$/
 
-/** Newest skill-audit-*.md by filename — dates are zero-padded so lexical sort works. */
+/**
+ * Newest skill-audit-*.md by mtime, filename as tiebreaker. Filename-only sort
+ * mis-orders same-day suffixed reports ("-pm.md" sorts before ".md").
+ */
 export function latestAuditFile(reportsDir: string): string | null {
   if (!existsSync(reportsDir)) return null
   const files = readdirSync(reportsDir)
     .filter((f) => f.startsWith('skill-audit-') && f.endsWith('.md'))
-    .sort()
+    .map((f) => ({ f, mtime: statSync(join(reportsDir, f)).mtimeMs }))
+    .sort((a, b) => a.mtime - b.mtime || a.f.localeCompare(b.f))
   const newest = files[files.length - 1]
-  return newest ? join(reportsDir, newest) : null
+  return newest ? join(reportsDir, newest.f) : null
 }
 
 /**
