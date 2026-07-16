@@ -48,8 +48,47 @@ function ApprovalCard({
   )
 }
 
+function ProposalCard({
+  proposal,
+  onCreate,
+}: {
+  proposal: { name: string; task: string; frequency: string; what: string }
+  onCreate: () => Promise<void>
+}) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  return (
+    <div className="approval-card">
+      <div className="run-head">
+        <span className="goal-dot" />
+        <span className="run-name">/{proposal.name}</span>
+        <span className="detail-sub">
+          {proposal.frequency} · {proposal.task}
+        </span>
+        <span className="approval-buttons">
+          <button
+            className="approve"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true)
+              setErr(null)
+              onCreate()
+                .catch((e: Error) => setErr(e.message))
+                .finally(() => setBusy(false))
+            }}
+          >
+            {busy ? 'Creating…' : 'Create skill'}
+          </button>
+        </span>
+      </div>
+      <div className="detail-sub">{proposal.what}</div>
+      {err && <div className="error">{err}</div>}
+    </div>
+  )
+}
+
 export function Board() {
-  const { board, error, approve, reject } = useBoard()
+  const { board, error, approve, reject, createSkill } = useBoard()
 
   return (
     <div className="actions">
@@ -88,6 +127,15 @@ export function Board() {
       )}
 
       <Actions />
+
+      {board && (board.skillProposals ?? []).length > 0 && (
+        <>
+          <h2>Proposed skills</h2>
+          {(board.skillProposals ?? []).map((p) => (
+            <ProposalCard key={p.name} proposal={p} onCreate={() => createSkill(p.name)} />
+          ))}
+        </>
+      )}
 
       {board && board.routines.length > 0 && (
         <>

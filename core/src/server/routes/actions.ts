@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import type { AppContext } from '../app.js'
+import { defaultSkillDirs, listProposals } from '../../skills/proposals.js'
 
 const rejectSchema = z.object({ feedback: z.string().min(1).max(2000) })
 
@@ -84,6 +85,9 @@ export function registerActionRoutes(app: FastifyInstance, ctx: AppContext): voi
         goals: goals.filter((g) => !g.running).slice(0, 8),
         routines: scheduler?.nextRuns() ?? [],
         recent: runLog.recentAll(12),
+        skillProposals: listProposals(ctx.skillDirs ?? defaultSkillDirs()).filter(
+          (p) => !p.exists,
+        ),
       },
     }
   })

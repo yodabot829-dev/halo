@@ -9,6 +9,8 @@ export interface BoardData {
   goals: { id: string; title: string; status: string; project: string }[]
   routines: { name: string; schedule: string; nextRun: string | null }[]
   recent: RunSummary[]
+  /** Optional: absent when talking to a pre-skill-proposals server. */
+  skillProposals?: { name: string; task: string; frequency: string; what: string }[]
 }
 
 export function useBoard() {
@@ -52,5 +54,17 @@ export function useBoard() {
     [refresh],
   )
 
-  return { board, error, refresh, approve, reject }
+  const createSkill = useCallback(
+    async (name: string) => {
+      const res = await apiFetch(`/api/skill-proposals/${name}/create`, { method: 'POST' })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(body?.error ?? `create skill failed (${res.status})`)
+      }
+      await refresh()
+    },
+    [refresh],
+  )
+
+  return { board, error, refresh, approve, reject, createSkill }
 }
