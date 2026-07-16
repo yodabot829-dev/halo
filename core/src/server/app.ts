@@ -20,7 +20,9 @@ import { registerLoopRoutes } from './routes/loops.js'
 import { registerMemoryRoutes } from './routes/memory.js'
 import { registerModelRoutes } from './routes/models.js'
 import { registerProjectRoutes } from './routes/projects.js'
+import { registerSkillRoutes } from './routes/skills.js'
 import { registerVoiceRoutes } from './routes/voice.js'
+import type { SkillDirs } from '../skills/proposals.js'
 
 export interface AppContext {
   config: HaloConfig
@@ -41,6 +43,8 @@ export interface AppContext {
   goals?: { store: GoalStore; engine: GoalEngine }
   /** One-click actions; absent = action routes disabled. */
   actions?: { runner: ActionRunner; runLog: RunLog; scheduler?: ActionScheduler }
+  /** Skill-audit report + skills dirs; tests override, defaults to the real homedir paths. */
+  skillDirs?: SkillDirs
 }
 
 export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
@@ -84,6 +88,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   registerProjectRoutes(app, ctx)
   registerActionRoutes(app, ctx)
   registerLoopRoutes(app, ctx)
+  registerSkillRoutes(app, ctx)
 
   if (ctx.webDist && existsSync(ctx.webDist)) {
     await app.register(fastifyStatic, { root: ctx.webDist })
