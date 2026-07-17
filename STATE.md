@@ -1,6 +1,6 @@
 # HALO — State
 
-Updated: 2026-07-03
+Updated: 2026-07-17
 
 **Full reference:** `docs/ARCHITECTURE.md` (every component, wiring, diagrams, API,
 config, limitations, 26-item backlog). Read that first on any fresh session.
@@ -51,11 +51,26 @@ Multi-LLM routing, vault memory, goals/actions with approval, voice, all local.
   (`speakByDefault` prop). This is the clean voice-both-ways surface; the TUI can't
   do talk-back. (The 🔊 per-call TTS voice override + `bm_george` "Jarvis" voice also
   exist but Voice mode uses Cortana per Shumon's call.)
-  **Not yet merged to main** — review branch (12 commits ahead).
+  **Not yet merged to main** — review branch, rebased onto main 2026-07-16 (16 commits
+  ahead, 186 tests green, pushed with --force-with-lease).
+- **✅ Skill-proposals board (MERGED PR #5, 2026-07-16, LIVE):** Board shows a
+  "Proposed skills" section parsed from the newest `skill-audit-*.md` in the vault's
+  `OS/Reports/` (picked by mtime); each card has a **Create skill** button →
+  `POST /api/skill-proposals/:name/create` scaffolds `~/.claude/skills/<name>/SKILL.md`
+  from the proposal row. Built skills are filtered out; names validated against the
+  parsed list (no arbitrary writes). `GET /api/skill-proposals` standalone too; dirs
+  injectable via `AppContext.skillDirs` for tests. Verified live end-to-end after the
+  2026-07-17 daemon restart — first real card: `/ios-release` from that night's audit.
+  Context: the 8 long-carried audit proposals (deploy-verify, expo-test, pr-babysit,
+  adversarial-sweep, data-verify, launchd-check, clickup-reconcile, resume-project)
+  were hand-built into `~/.claude/skills/` on 2026-07-16, so the standing
+  "build-or-downgrade" audit nag is resolved.
 
 ## Next / open
 
-- **Merge `feat/terminal-per-project`** (4 commits ahead of main) once Shumon signs off.
+- **Merge `feat/terminal-per-project`** (rebased, 16 commits ahead of main) once Shumon signs off.
+- **Audit cadence decision still open:** nightly skill-audit vs weekly — the 8-proposal
+  backlog is cleared, so nightly may now be fine; Shumon's call.
 - **Slice 7 (needs Shumon):** launchd daemon; Tailscale bind + `HALO_TOKEN`;
   migrate `.env` keys + plaintext OpenClaw Telegram/gateway tokens into Infisical;
   port the Telegram channel; retire OpenClaw gateway.
