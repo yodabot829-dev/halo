@@ -82,17 +82,20 @@ export class GoalEngine {
     return () => set.delete(fn)
   }
 
-  private emit(goal: Goal, event: GoalEvent): void {
+  private emit(goal: Goal, event: GoalEvent): Goal {
     // The executor edits the goal file's checkpoint sections while we hold a
     // stale copy — re-read them so our saves never clobber its progress.
     const onDisk = this.deps.store.get(goal.id)
-    if (onDisk) {
-      goal.plan = onDisk.plan
-      goal.doneSoFar = onDisk.doneSoFar
+    const line = `${new Date().toISOString()} [${event.kind}] ${event.text.slice(0, 500).replace(/\n/g, ' ')}`
+    const next: Goal = {
+      ...goal,
+      plan: onDisk?.plan ?? goal.plan,
+      doneSoFar: onDisk?.doneSoFar ?? goal.doneSoFar,
+      log: [...goal.log, line],
     }
-    goal.log.push(`${new Date().toISOString()} [${event.kind}] ${event.text.slice(0, 500).replace(/\n/g, ' ')}`)
-    this.deps.store.save(goal)
-    for (const fn of this.listeners.get(goal.id) ?? []) fn(event)
+    this.deps.store.save(next)
+    for (const fn of this.listeners.get(next.id) ?? []) fn(event)
+    return next
   }
 
   stop(id: string): boolean {
@@ -105,8 +108,9 @@ export class GoalEngine {
   async run(id: string): Promise<Goal> {
     const { store, executors, projects, judge, maxIterations, stepTimeoutMs, maxConcurrent } =
       this.deps
-    const goal = store.get(id)
-    if (!goal) throw new Error(`Unknown goal "${id}"`)
+    const loaded = store.get(id)
+    if (!loaded) throw new Error(`Unknown goal "${id}"`)
+    let goal: Goal = loaded
     if (this.running.has(id)) throw new Error(`Goal "${id}" is already running`)
 
     const cwd = projects[goal.project]
@@ -128,21 +132,23 @@ export class GoalEngine {
 
     const abort = new AbortController()
     this.running.set(id, { abort, project: goal.project })
-    goal.status = 'running'
-    this.emit(goal, { kind: 'status', text: `running with ${executor.name} in ${goal.project}` })
+    goal = { ...goal, status: 'running' }
+    goal = this.emit(goal, { kind: 'status', text: `running with ${executor.name} in ${goal.project}` })
 
     let feedback: string | null = null
     try {
       for (let i = 1; i <= maxIterations; i++) {
-        goal.iterations = i
-        this.emit(goal, { kind: 'status', text: `iteration ${i}/${maxIterations}` })
+        goal = { ...goal, iterations: i }
+        goal = this.emit(goal, { kind: 'status', text: `iteration ${i}/${maxIterations}` })
 
         const result = await executor.execute(buildTaskPrompt(goal, feedback, store.pathFor(id)), {
           cwd,
           signal: abort.signal,
           timeoutMs: stepTimeoutMs,
           inactivityTimeoutMs: this.deps.inactivityTimeoutMs,
-          onEvent: (e) => this.emit(goal, { kind: e.kind === 'error' ? 'error' : 'output', text: e.text }),
+          onEvent: (e) => {
+            goal = this.emit(goal, { kind: e.kind === 'error' ? 'error' : 'output', text: e.text })
+          },
         })
 
         if (result.usage) {
@@ -158,31 +164,31 @@ export class GoalEngine {
         }
 
         if (abort.signal.aborted) {
-          goal.status = 'stopped'
-          this.emit(goal, { kind: 'status', text: 'stopped by user' })
+          goal = { ...goal, status: 'stopped' }
+          goal = this.emit(goal, { kind: 'status', text: 'stopped by user' })
           return goal
         }
         if (!result.ok) {
           feedback = `The executor exited with code ${result.exitCode}. Output tail:\n${result.output.slice(-1500)}`
-          this.emit(goal, { kind: 'error', text: `executor failed (exit ${result.exitCode})` })
+          goal = this.emit(goal, { kind: 'error', text: `executor failed (exit ${result.exitCode})` })
           continue
         }
 
         const verdict = await judge(goal, result.output)
         if (verdict.met) {
-          goal.status = 'done'
-          this.emit(goal, { kind: 'status', text: `criteria met — ${verdict.feedback.slice(0, 300)}` })
+          goal = { ...goal, status: 'done' }
+          goal = this.emit(goal, { kind: 'status', text: `criteria met — ${verdict.feedback.slice(0, 300)}` })
           return goal
         }
         feedback = verdict.feedback
-        this.emit(goal, { kind: 'status', text: `criteria not met — ${verdict.feedback.slice(0, 300)}` })
+        goal = this.emit(goal, { kind: 'status', text: `criteria not met — ${verdict.feedback.slice(0, 300)}` })
       }
-      goal.status = 'failed'
-      this.emit(goal, { kind: 'status', text: `max iterations reached — needs human review` })
+      goal = { ...goal, status: 'failed' }
+      goal = this.emit(goal, { kind: 'status', text: `max iterations reached — needs human review` })
       return goal
     } catch (err) {
-      goal.status = abort.signal.aborted ? 'stopped' : 'failed'
-      this.emit(goal, { kind: 'error', text: (err as Error).message })
+      goal = { ...goal, status: abort.signal.aborted ? 'stopped' : 'failed' }
+      goal = this.emit(goal, { kind: 'error', text: (err as Error).message })
       return goal
     } finally {
       this.running.delete(id)
