@@ -31,10 +31,40 @@ export interface ModelSource {
 
 type ModelFactory = (modelId: string) => LanguageModel
 
+/** Synthetic's reasoning models (e.g. GLM-5.2) emit `thinking` content blocks
+ * without the `signature` field the real Anthropic API always includes.
+ * @ai-sdk/anthropic's response schema requires that field and throws "Invalid
+ * JSON response" on every call that reasons. The AI SDK's `thinking: {type:
+ * 'disabled'}` providerOption can't suppress this — it only ever emits the
+ * `thinking` request field for 'enabled'/'adaptive', so 'disabled' is a no-op
+ * on the wire. Patch the outgoing body directly instead; verified against the
+ * live API that this suppresses the unsigned thinking block. */
+function disableThinkingFetch(): typeof fetch {
+  return async (input, init) => {
+    if (init?.body && typeof init.body === 'string') {
+      try {
+        const body = JSON.parse(init.body) as Record<string, unknown>
+        body.thinking = { type: 'disabled' }
+        init = { ...init, body: JSON.stringify(body) }
+      } catch {
+        // non-JSON body (shouldn't happen for /messages) — send as-is
+      }
+    }
+    return fetch(input, init)
+  }
+}
+
 function makeFactory(p: ProviderConfig, apiKey: string | undefined): ModelFactory {
   switch (p.kind) {
-    case 'anthropic':
-      return (id) => createAnthropic({ apiKey, baseURL: p.baseURL })(id)
+    case 'anthropic': {
+      const isSynthetic = p.baseURL?.includes('synthetic.new') ?? false
+      return (id) =>
+        createAnthropic({
+          apiKey,
+          baseURL: p.baseURL,
+          ...(isSynthetic ? { fetch: disableThinkingFetch() } : {}),
+        })(id)
+    }
     case 'openai':
       return (id) => createOpenAI({ apiKey, baseURL: p.baseURL })(id)
     case 'google':
