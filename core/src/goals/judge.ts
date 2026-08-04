@@ -29,7 +29,11 @@ async function judgeOnce(
   angle: string,
 ): Promise<OneVerdict> {
   const exhausted = exhaustedProviders(budgetStatus(config, meter, new Date()))
-  const selection = selectModel('reason', registry.list(), config, undefined, exhausted)
+  // claude-code is a CLI chat bridge, not an API model — registry.resolve() throws on it.
+  // Judging needs generateText(), so it must never be selected here (unlike chat.ts, which
+  // branches to streamClaudeCodeChat for this provider).
+  const resolvable = registry.list().filter((m) => config.providers[m.provider]?.kind !== 'claude-code')
+  const selection = selectModel('reason', resolvable, config, undefined, exhausted)
   const prompt = [
     'You are a strict reviewer for a goal. Apply this lens:',
     angle,
