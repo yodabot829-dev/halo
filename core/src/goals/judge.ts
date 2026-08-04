@@ -73,10 +73,15 @@ async function judgeOnce(
   return { met: false, feedback: `Unparseable reviewer reply: ${result.text.slice(0, 200)}` }
 }
 
-/** Single-reviewer verdict. */
+/** Single-reviewer verdict. A judge-call failure (network blip, provider error) is
+ * reported as feedback rather than thrown, so the goal retries the next iteration
+ * instead of the engine's outer catch hard-failing the whole run on one hiccup. */
 export function makeLlmJudge(registry: ModelSource, config: HaloConfig, meter: Meter): Judge {
   return (goal, output) =>
-    judgeOnce(registry, config, meter, goal, output, LENSES[0].angle)
+    judgeOnce(registry, config, meter, goal, output, LENSES[0].angle).catch((err) => ({
+      met: false,
+      feedback: `judge call failed: ${(err as Error).message}`,
+    }))
 }
 
 /** Panel verdict: three lenses vote; a goal passes only on unanimous approval,
