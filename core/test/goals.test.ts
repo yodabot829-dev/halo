@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -202,6 +202,14 @@ describe('GoalEngine', () => {
     expect(prompts[0]).toContain(store.pathFor(goal.id))
     expect(prompts[0]).toContain('## Plan')
     expect(prompts[0]).toContain('## Done so far')
+  })
+
+  it('list() skips vault notes that are not goals (bad id, or no Objective)', () => {
+    const store = new GoalStore(dir)
+    const goal = store.create(GOAL_INPUT)
+    writeFileSync(join(dir, 'INDEX.md'), '---\ntitle: Goals INDEX\n---\n# navigation note\n')
+    writeFileSync(join(dir, 'stray-note.md'), '---\ntitle: Stray\n---\njust a note\n')
+    expect(store.list().map((g) => g.id)).toEqual([goal.id])
   })
 
   it('carries the executor-written checkpoint into the next iteration prompt', async () => {

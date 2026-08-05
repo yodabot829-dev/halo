@@ -78,7 +78,12 @@ export class GoalStore {
     if (!existsSync(this.dir)) return []
     return readdirSync(this.dir)
       .filter((f) => f.endsWith('.md'))
-      .map((f) => parseGoal(f.replace(/\.md$/, ''), readFileSync(join(this.dir, f), 'utf8')))
+      .map((f) => f.replace(/\.md$/, ''))
+      // same id rule as get() — otherwise list() surfaces files get() can't fetch
+      .filter((id) => /^[a-z0-9-]+$/.test(id))
+      .map((id) => parseGoal(id, readFileSync(join(this.dir, `${id}.md`), 'utf8')))
+      // notes/indexes living in the goals folder aren't goals
+      .filter((g) => g.objective !== '')
   }
 
   get(id: string): Goal | undefined {
