@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { WebSocket, RawData } from 'ws'
 import { z } from 'zod'
-import { tokenMatches } from '../auth.js'
+import { originAllowed as sharedOriginAllowed, tokenMatches } from '../auth.js'
 import type { AppContext } from '../app.js'
 
 const AUTH_TIMEOUT_MS = 3000
@@ -37,18 +37,9 @@ function parseFrame(raw: RawData): Frame | null {
   }
 }
 
-/**
- * Browsers always send Origin on a WS handshake and cannot forge it, so
- * rejecting a mismatched Origin closes the cross-site-hijack vector. A
- * missing Origin means a non-browser client (tests, CLI, a raw Tailscale
- * peer) — those already have shell access, so they are allowed through.
- */
+/** Shared with the other do-something routes — see auth.ts for why. */
 function originAllowed(req: FastifyRequest, ctx: AppContext): boolean {
-  const origin = req.headers.origin
-  if (!origin) return true
-  const host = req.headers.host
-  if (host && (origin === `http://${host}` || origin === `https://${host}`)) return true
-  return ctx.config.server.corsOrigins.includes(origin)
+  return sharedOriginAllowed(req.headers, ctx.config.server.corsOrigins)
 }
 
 export function registerTerminalRoutes(app: FastifyInstance, ctx: AppContext): void {

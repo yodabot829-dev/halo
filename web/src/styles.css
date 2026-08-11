@@ -1118,3 +1118,79 @@ button.primary:hover {
   padding: 8px;
 }
 .term-screen .xterm { height: 100%; }
+
+.device-memory {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.device-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.device-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.device-row {
+  display: grid;
+  grid-template-columns: 1fr auto 72px;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.device-row:last-child {
+  border-bottom: none;
+}
+
+.device-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-count,
+.device-mem {
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.device-quit {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  min-height: 32px;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.device-quit:hover:not(:disabled) {
+  border-color: #d43c3c;
+  color: #d43c3c;
+}
+
+.device-quit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.device-quit-locked {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../api'
+import { DeviceMemory } from './DeviceMemory'
 
 interface ProviderTotals {
   provider: string
@@ -34,13 +35,28 @@ export function Ops() {
       .catch((err: Error) => setError(err.message))
   }, [])
 
-  if (error) return <div className="error">{error}</div>
-  if (!usage) return <div className="empty">Loading usage…</div>
-
-  const totalsByProvider = new Map(usage.totals.map((t) => [t.provider, t]))
+  // Device memory stands alone — a failed usage fetch must not hide it.
+  const spend = error ? (
+    <div className="error">{error}</div>
+  ) : !usage ? (
+    <div className="empty">Loading usage…</div>
+  ) : (
+    renderSpend(usage)
+  )
 
   return (
     <div className="ops">
+      {spend}
+      <DeviceMemory />
+    </div>
+  )
+}
+
+function renderSpend(usage: Usage) {
+  const totalsByProvider = new Map(usage.totals.map((t) => [t.provider, t]))
+
+  return (
+    <>
       <h2>This month</h2>
       {usage.budgets.map((b) => {
         const t = totalsByProvider.get(b.provider)
@@ -66,6 +82,6 @@ export function Ops() {
           </div>
         )
       })}
-    </div>
+    </>
   )
 }

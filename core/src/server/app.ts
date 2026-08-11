@@ -23,6 +23,7 @@ import { registerMemoryRoutes } from './routes/memory.js'
 import { registerModelRoutes } from './routes/models.js'
 import { registerProjectRoutes } from './routes/projects.js'
 import { registerSkillRoutes } from './routes/skills.js'
+import { registerSystemRoutes } from './routes/system.js'
 import { registerTerminalRoutes } from './routes/terminal.js'
 import { registerVoiceRoutes } from './routes/voice.js'
 import type { SkillDirs } from '../skills/proposals.js'
@@ -100,6 +101,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   registerLoopRoutes(app, ctx)
   registerSkillRoutes(app, ctx)
   registerTerminalRoutes(app, ctx)
+  registerSystemRoutes(app, ctx)
 
   if (ctx.webDist && existsSync(ctx.webDist)) {
     await app.register(fastifyStatic, { root: ctx.webDist })
