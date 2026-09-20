@@ -83,6 +83,8 @@ export const configSchema = z.object({
     .default({ classOrder: {} }),
   // Registered project directories — executors are confined to these.
   projects: z.record(z.string(), z.string()).default({}),
+  // Per-project reference links (label → url) shown on the project detail page.
+  projectLinks: z.record(z.string(), z.record(z.string(), z.string().url())).default({}),
   executors: z
     .object({
       default: z.string().default('claude-code'),

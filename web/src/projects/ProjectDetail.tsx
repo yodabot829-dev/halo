@@ -12,6 +12,7 @@ interface ProjectInfo {
   weeklyCommits: number[]
   next: string | null
   graphed: boolean
+  links?: Record<string, string>
 }
 
 interface NoteRow {
@@ -124,6 +125,19 @@ export function ProjectDetail({
             </div>
           ))}
         </section>
+
+        {info?.links && Object.keys(info.links).length > 0 && (
+          <section className="detail-card">
+            <h2>Links · {Object.keys(info.links).length}</h2>
+            {Object.entries(info.links).map(([label, url]) => (
+              <div key={label} className="detail-row">
+                <a href={url} target="_blank" rel="noreferrer">
+                  {label}
+                </a>
+              </div>
+            ))}
+          </section>
+        )}
 
         <section className="detail-card">
           <h2>Recent memory</h2>

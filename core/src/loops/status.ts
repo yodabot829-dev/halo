@@ -4,7 +4,7 @@
 // ever writes to a scoreboard, sentinel, plist or launchd — READ ONLY.
 
 /** The five loop keys, matching the scoreboard control panel. */
-export const LOOP_KEYS = ['piq', 'trading-bot', 'journeyforce', 'etsy', 'halo'] as const
+export const LOOP_KEYS = ['piq', 'trading-bot', 'journeyforce', 'etsy', 'halo', 'app-framework'] as const
 export type LoopKey = (typeof LOOP_KEYS)[number]
 
 export type LoopState = 'live' | 'paused' | 'stalled' | 'errored' | 'unknown'

@@ -17,12 +17,16 @@ communities, paths) — it is faster and grounded. Otherwise answer by exploring
 repo directly. Be concise and specific; cite file paths.`
 
 export function registerProjectRoutes(app: FastifyInstance, ctx: AppContext): void {
-  let cache: { at: number; data: ProjectInfo[] } | null = null
+  let cache: { at: number; data: (ProjectInfo & { links: Record<string, string> })[] } | null =
+    null
 
   app.get('/api/projects', async () => {
     if (!cache || Date.now() - cache.at > CACHE_MS) {
       const data = await Promise.all(
-        Object.entries(ctx.config.projects).map(([name, path]) => gatherProjectInfo(name, path)),
+        Object.entries(ctx.config.projects).map(async ([name, path]) => ({
+          ...(await gatherProjectInfo(name, path)),
+          links: ctx.config.projectLinks[name] ?? {},
+        })),
       )
       cache = {
         at: Date.now(),

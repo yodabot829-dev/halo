@@ -115,6 +115,56 @@ projects:
   app-framework: ~/.openclaw/workspace/yodaclaude/app-framework # cloneable AI feature-app starter (create-app.sh)
   vault: ~/Documents/Openclaw yodabot # the Obsidian second brain itself
 
+# Reference links per project (label → url) — shown as a Links card on the
+# project detail page. Claude artifacts, dashboards, approval consoles.
+projectLinks:
+  journeyforce-website:
+    "Mission control (everything on one page)": https://claude.ai/code/artifact/b3d3a521-3d2d-443b-a008-e1623507243c
+    "B2 Outreach — August 2026 (approval console)": https://claude.ai/code/artifact/c0d1c399-acd1-4107-84fb-aa9123cfcaa8
+    "Voice-Audit Funnel — Go-Live Docket": https://claude.ai/code/artifact/833fc610-73ad-42d5-afe5-8d8c1139ad83
+    "Reskin — Style Board 02": https://claude.ai/code/artifact/222ba427-5163-4081-8d09-e75f9ed01826
+    "Scroll-world demo v2": https://claude.ai/code/artifact/006a5103-5abb-4d1d-991b-7a5462e23b12
+    "pipeline.md": https://claude.ai/code/artifact/37feb11f-adc5-46b5-b9d3-1ac19e199d46
+    "Tour of AI Wonderland — review hub": https://claude.ai/code/artifact/e26a6359-c023-4e12-a6ca-d9f4bae44af4
+    "Tour of AI Wonderland — 14 Shorts Scripts": https://claude.ai/code/artifact/c16010c4-2d5c-4c0e-9819-61da71730534
+    "Alice in AI Wonderland — Episode Scripts": https://claude.ai/code/artifact/19e03439-d470-46e1-b0ab-3eee24b295a2
+    "S13 Audio Kit — pick the bed": https://claude.ai/code/artifact/7ec90324-eddb-4909-a7a3-7c5de6b5c6e8
+    "Storyboard t01 — What Is AI, Actually?": https://claude.ai/code/artifact/de680f92-61ca-4ddf-b051-9a52e6a7c2d5
+    "Storyboard t02 — What Is an LLM?": https://claude.ai/code/artifact/bb6e4302-a78d-4066-9f3d-53a665df6902
+    "Storyboard t03 — What Is a Token?": https://claude.ai/code/artifact/3a250acf-da01-4b9c-93b3-5286758a2ef9
+    "Storyboard t04 — What Is Context?": https://claude.ai/code/artifact/740c5192-9e24-4ca9-ba24-8a9e3addbd46
+    "Storyboard t05 — What Is a Context Window?": https://claude.ai/code/artifact/53d47f86-6e4f-425b-a2c6-61d281598087
+    "Storyboard t06 — What Is a Hallucination?": https://claude.ai/code/artifact/a5391ac5-aa52-4fc0-b795-da80812895e8
+    "Storyboard t07 — What Is a Prompt?": https://claude.ai/code/artifact/68bdf5a7-7519-4923-8546-f2ff11a91cf5
+    "Storyboard t08 — What Is a Model?": https://claude.ai/code/artifact/aefa80e5-5f72-4100-a6dc-8e9712f0933d
+    "Storyboard t09 — What Are Tools?": https://claude.ai/code/artifact/331ed783-f566-4ab1-b06f-350c80b1b046
+    "Storyboard t10 — What Are Skills?": https://claude.ai/code/artifact/fb628c39-f73b-4e62-8877-a80b556479fd
+    "Storyboard t11 — What Is an Agent?": https://claude.ai/code/artifact/56fa3101-f436-4da5-90d8-e14c939d7dd0
+    "Storyboard t12 — What Is a Harness?": https://claude.ai/code/artifact/4f87c37a-a92c-4145-a9aa-f81f1214efd7
+    "Storyboard t13 — What Is Coworking with AI?": https://claude.ai/code/artifact/d84a1298-efef-4402-9641-c1e80bacb275
+    "Storyboard t14 — Getting Started, Really": https://claude.ai/code/artifact/bd1b6bb5-1211-4cbe-b53e-bdd9f308c072
+    "Vercel analytics": https://vercel.com/yodabot829-dev/journeyforce/analytics
+    "Stripe payments": https://dashboard.stripe.com/payments
+    "AEO scan funnel (live)": https://journeyforce.co.uk/aeo
+  gardeners-mate:
+    "Build Review": https://claude.ai/code/artifact/e268e7d4-2fba-457a-8b21-8bc4d966e9d1
+    "Security & Code Review": https://claude.ai/code/artifact/7352bd24-b0aa-40d2-9a22-84d294db5977
+    "Design system": https://claude.ai/code/artifact/42d20eab-c3c5-4e88-953a-6b3889237f16
+    "First live run": https://claude.ai/code/artifact/8e322241-56ea-4f18-98d7-35ce10db93f6
+  etsy-store:
+    "Traffic Strategy 2026 (store audit + action plan)": https://claude.ai/code/artifact/86953589-f478-402a-a4ca-6b9a4f6fcbb3
+    "Claude Design → Canva → Etsy pipeline runbook": https://claude.ai/code/artifact/4c0b885d-b28a-4005-90ef-23c398103d6c
+    "Shop setup copy (about, policies, FAQ)": https://claude.ai/code/artifact/6823ce3c-94fc-4296-9fa4-a63b42710023
+    "Keyword & competitor research": https://claude.ai/code/artifact/3b0bad06-5af7-437c-901f-d3c8a7512567
+    "Listing kit — titles/tags/descriptions (24 products)": https://claude.ai/code/artifact/ffba429d-336d-4d75-86d5-cca74f8992ef
+  app-framework:
+    "Spec & Design": https://claude.ai/code/artifact/3956a281-6011-4f53-90f7-c770fb8b5435
+    "Release Cycle & Loops": https://claude.ai/code/artifact/0bca7d8a-d90f-479a-9663-6225c403e052
+    "Aesthetics": https://claude.ai/code/artifact/5425e0a0-e627-4c63-bc98-59d40cd48c91
+    "Fleet dashboard": https://claude.ai/code/artifact/5b829d65-e960-45b8-a0a9-167d3465ed3f
+    "BUILD-SPEC.md": https://claude.ai/code/artifact/7a8876a7-f35a-4d2d-a7b6-46789bb0d8a0
+    "Loop Goals — G6 & G7 Spec Review": https://claude.ai/code/artifact/f5c8ed9d-e575-41e9-91d8-ce4759545236
+
 executors:
   # Swap default to `codex` when Claude Max hits its 5h session limit —
   # NOTE 2026-07-02: codex CLI rejects all models on the current ChatGPT
