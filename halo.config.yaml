@@ -146,6 +146,10 @@ projectLinks:
     "Vercel analytics": https://vercel.com/yodabot829-dev/journeyforce/analytics
     "Stripe payments": https://dashboard.stripe.com/payments
     "AEO scan funnel (live)": https://journeyforce.co.uk/aeo
+    "JourneyForce AI visibility — South East, 23 Sep 2026": https://claude.ai/artifact/CsekVs52upmSyVgxCqYVdt
+  leadgen-agent:
+    "E-commerce campaign — progress page (rebuilt nightly)": https://claude.ai/artifact/6cVN3An9RrqMD8eHYrhpj9
+    "E-commerce campaign — send review": https://claude.ai/artifact/VnVQNAhgCnsi5JTpjfGLPt
   gardeners-mate:
     "Build Review": https://claude.ai/code/artifact/e268e7d4-2fba-457a-8b21-8bc4d966e9d1
     "Security & Code Review": https://claude.ai/code/artifact/7352bd24-b0aa-40d2-9a22-84d294db5977
